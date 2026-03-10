@@ -12,7 +12,6 @@ import sys
 from collections import deque
 from functools import wraps
 from datetime import datetime
-import jwt
 
 # Get the directory where this script is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -886,7 +885,8 @@ def auth_me():
 def serve_menu_static(filename):
     """Serve static files from meduseld-site in dev mode"""
     if IS_DEV:
-        static_path = os.path.join(os.path.dirname(BASE_DIR), "meduseld-site", "static")
+        # BASE_DIR is app/, go up two levels to parent, then into meduseld-site/static
+        static_path = os.path.join(os.path.dirname(os.path.dirname(BASE_DIR)), "meduseld-site", "static")
         if os.path.exists(os.path.join(static_path, filename)):
             from flask import send_from_directory
             return send_from_directory(static_path, filename)
@@ -903,12 +903,13 @@ def home():
     if host == "menu.meduseld.io" or (IS_DEV and host in ["localhost", "127.0.0.1"]):
         # In dev mode, serve the static menu page from meduseld-site
         if IS_DEV:
-            menu_path = os.path.join(os.path.dirname(BASE_DIR), "meduseld-site", "menu", "index.html")
+            # BASE_DIR is app/, so go up two levels to get to parent, then into meduseld-site
+            menu_path = os.path.join(os.path.dirname(os.path.dirname(BASE_DIR)), "meduseld-site", "menu", "index.html")
             if os.path.exists(menu_path):
                 with open(menu_path, 'r') as f:
                     return f.read()
             else:
-                return "Menu page not found. Make sure meduseld-site is in the parent directory.", 404
+                return f"Menu page not found at {menu_path}", 404
         # In production, this would be served by a separate static site
         return "Menu should be served separately in production", 404
     
