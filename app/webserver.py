@@ -13,6 +13,8 @@ from collections import deque
 from functools import wraps
 from datetime import datetime
 import jwt
+import socket
+import struct
 
 # Get the directory where this script is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -289,6 +291,7 @@ def is_running():
     
     try:
         # Production: check by process name and command line
+        found_processes = []
         for proc in psutil.process_iter(["name", "cmdline", "pid", "exe"]):
             # For Wine processes, check the command line for the exe name
             if proc.info["cmdline"]:
@@ -296,16 +299,27 @@ def is_running():
                     # cmdline is a list, convert each element to string and join
                     cmdline_str = " ".join(str(arg) for arg in proc.info["cmdline"])
                     
+                    # Log all wine/icarus related processes for debugging
+                    if "wine" in proc.info["name"].lower() or "icarus" in cmdline_str.lower():
+                        found_processes.append(f"PID {proc.info['pid']}: {proc.info['name']} - {cmdline_str[:100]}")
+                    
                     # Skip tmux, xvfb-run, wine launcher processes - we want the actual game server
-                    if proc.info["name"] in ["tmux", "tmux: server", "xvfb-run", "sh", "bash", "wine", "wine64", "wineserver", "start.exe"]:
+                    if proc.info["name"] in ["tmux", "tmux: server", "xvfb-run", "sh", "bash", "wine", "wine64", "wineserver"]:
                         continue
                     
                     if "IcarusServer-Win64-Shipping.exe" in cmdline_str:
-                        logger.debug(f"Found server by cmdline: PID {proc.info['pid']}, name: {proc.info['name']}, exe: {proc.info.get('exe', 'N/A')}")
+                        logger.info(f"Found server by cmdline: PID {proc.info['pid']}, name: {proc.info['name']}, exe: {proc.info.get('exe', 'N/A')}")
                         return True
                 except Exception as e:
                     # Skip processes we can't access
                     continue
+        
+        if found_processes:
+            logger.debug(f"Found {len(found_processes)} wine/icarus related processes but none matched:")
+            for p in found_processes[:5]:  # Log first 5
+                logger.debug(f"  {p}")
+        else:
+            logger.debug("No wine or icarus related processes found at all")
         
         logger.debug("Server process not found")
     except Exception as e:
@@ -325,28 +339,63 @@ def launch_server():
         else:
             # Production: Check if launch script exists, use it for better process isolation
             if 'LAUNCH_SCRIPT' in globals() and os.path.exists(LAUNCH_SCRIPT):
-                # Use the script which uses proper process isolation
-                subprocess.Popen(
-                    [LAUNCH_SCRIPT],
-                    shell=True,
+                # Ensure script is executable
+                try:
+                    os.chmod(LAUNCH_SCRIPT, 0o755)
+                except Exception as e:
+                    logger.warning(f"Could not set execute permission on {LAUNCH_SCRIPT}: {e}")
+                
+                # Use bash explicitly to run the script
+                logger.info(f"Launching server via script: {LAUNCH_SCRIPT}")
+                logger.info(f"Working directory: {os.path.dirname(os.path.abspath(LAUNCH_SCRIPT)) if os.path.dirname(LAUNCH_SCRIPT) else '.'}")
+                
+                proc = subprocess.Popen(
+                    ["bash", LAUNCH_SCRIPT],
                     cwd=os.path.dirname(os.path.abspath(LAUNCH_SCRIPT)) if os.path.dirname(LAUNCH_SCRIPT) else ".",
                     stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
                 )
-                logger.info("Server launched via script (independent process)")
+                logger.info(f"Server launch script started with PID: {proc.pid}")
+                
+                # Give it a moment to start, then check if it's still alive
+                time.sleep(2)
+                poll_result = proc.poll()
+                if poll_result is not None:
+                    # Process already exited
+                    stdout, stderr = proc.communicate()
+                    logger.error(f"Launch script exited immediately with code {poll_result}")
+                    logger.error(f"STDOUT: {stdout.decode('utf-8', errors='ignore')}")
+                    logger.error(f"STDERR: {stderr.decode('utf-8', errors='ignore')}")
+                else:
+                    logger.info("Launch script is running")
             else:
                 # Fallback to direct launch
-                subprocess.Popen(
+                logger.info(f"Launching server directly: {LAUNCH_EXE} {' '.join(SERVER_ARGS)}")
+                logger.info(f"Working directory: {SERVER_DIR}")
+                
+                proc = subprocess.Popen(
                     [LAUNCH_EXE] + SERVER_ARGS,
                     cwd=SERVER_DIR,
                     stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
                 )
-                logger.info("Server launched directly (independent process)")
+                logger.info(f"Server process started with PID: {proc.pid}")
+                
+                # Give it a moment to start, then check if it's still alive
+                time.sleep(2)
+                poll_result = proc.poll()
+                if poll_result is not None:
+                    # Process already exited
+                    stdout, stderr = proc.communicate()
+                    logger.error(f"Server process exited immediately with code {poll_result}")
+                    logger.error(f"STDOUT: {stdout.decode('utf-8', errors='ignore')}")
+                    logger.error(f"STDERR: {stderr.decode('utf-8', errors='ignore')}")
+                else:
+                    logger.info("Server process is running")
     except Exception as e:
-        logger.error(f"Failed to launch server: {e}")
+        logger.error(f"Failed to launch server: {e}", exc_info=True)
         raise
 
 def kill_server():
@@ -527,6 +576,76 @@ def get_icarus_usage():
     except Exception as e:
         logger.error(f"Error iterating processes: {e}", exc_info=True)
     return None
+def get_player_count():
+    """Query Steam server for current player count using A2S_INFO protocol"""
+    try:
+        if IS_DEV:
+            # Return fake player count in dev mode
+            import random
+            return random.randint(0, 8)
+
+        # Steam Query Protocol A2S_INFO
+        query_port = 27015
+        query_host = "127.0.0.1"
+
+        # Create UDP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(2)
+
+        # A2S_INFO request packet
+        # Format: 0xFFFFFFFF (4 bytes) + 0x54 (1 byte) + "Source Engine Query\0"
+        request = b'\xFF\xFF\xFF\xFF\x54Source Engine Query\x00'
+
+        sock.sendto(request, (query_host, query_port))
+        data, addr = sock.recvfrom(4096)
+        sock.close()
+
+        # Parse response
+        # Skip header (4 bytes 0xFFFFFFFF + 1 byte type)
+        if len(data) < 5:
+            return None
+
+        # Skip protocol version (1 byte)
+        offset = 6
+
+        # Skip server name (null-terminated string)
+        while offset < len(data) and data[offset] != 0:
+            offset += 1
+        offset += 1
+
+        # Skip map name (null-terminated string)
+        while offset < len(data) and data[offset] != 0:
+            offset += 1
+        offset += 1
+
+        # Skip folder (null-terminated string)
+        while offset < len(data) and data[offset] != 0:
+            offset += 1
+        offset += 1
+
+        # Skip game (null-terminated string)
+        while offset < len(data) and data[offset] != 0:
+            offset += 1
+        offset += 1
+
+        # Skip app ID (2 bytes)
+        offset += 2
+
+        # Read player count (1 byte)
+        if offset < len(data):
+            players = data[offset]
+            logger.debug(f"Steam Query: {players} players online")
+            return players
+
+        return None
+
+    except socket.timeout:
+        logger.debug("Steam query timeout - server may not be responding to queries")
+        return None
+    except Exception as e:
+        logger.debug(f"Error querying player count: {e}")
+        return None
+
 
 def get_uptime():
     """Get server uptime in seconds"""
@@ -724,7 +843,41 @@ def monitor_server():
             
             # Only monitor if in stable states
             if current_state == "running" and not running:
-                logger.warning("Server crashed - process not found")
+                logger.error("=" * 60)
+                logger.error("SERVER CRASH DETECTED")
+                logger.error("=" * 60)
+                logger.error(f"Server was running but process is now gone")
+                logger.error(f"Last known state: {current_state}")
+                logger.error(f"Checking for crash indicators...")
+                
+                # Check system logs for OOM killer
+                try:
+                    result = subprocess.run(
+                        ["dmesg", "-T"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5
+                    )
+                    oom_lines = [line for line in result.stdout.split('\n') if 'oom' in line.lower() or 'killed process' in line.lower()]
+                    if oom_lines:
+                        logger.error("OOM KILLER DETECTED - Server was killed due to low memory:")
+                        for line in oom_lines[-5:]:
+                            logger.error(f"  {line}")
+                except Exception as e:
+                    logger.error(f"Could not check dmesg: {e}")
+                
+                # Check last log lines
+                try:
+                    log_lines = read_log()
+                    if log_lines:
+                        logger.error("Last 10 lines from game log:")
+                        for line in log_lines[-10:]:
+                            logger.error(f"  {line.strip()}")
+                except Exception as e:
+                    logger.error(f"Could not read game log: {e}")
+                
+                logger.error("=" * 60)
+                
                 set_server_state("crashed")
                 log_buffer.extend(read_log())
             
@@ -834,7 +987,8 @@ def home():
         stats=stats,
         icarus_stats=icarus_stats,
         logs=logs,
-        dev_mode=IS_DEV or dev_mode_active
+        dev_mode=IS_DEV or dev_mode_active,
+        server_state=get_server_state()
     )
 
 @app.route("/terminal")
@@ -876,14 +1030,24 @@ def start():
     launch_server()
 
     def wait():
-        for _ in range(START_TIMEOUT):
+        logger.info(f"Waiting up to {START_TIMEOUT} seconds for server to start...")
+        for i in range(START_TIMEOUT):
             time.sleep(1)
-            if is_running():
+            running = is_running()
+            
+            # Log every 10 seconds
+            if i % 10 == 0 or i < 5:
+                logger.info(f"Startup check {i}/{START_TIMEOUT}s - is_running(): {running}")
+            
+            if running:
                 set_server_state("running")
+                logger.info(f"Server detected as running after {i+1} seconds")
                 return
         
         # Failed to start
-        logger.error("Server failed to start within timeout")
+        logger.error(f"Server failed to start within {START_TIMEOUT} seconds")
+        logger.error("Checking for processes one more time...")
+        is_running()  # This will log what processes it found
         set_server_state("offline")
 
     threading.Thread(target=wait, daemon=True).start()
@@ -1137,6 +1301,7 @@ def api_stats():
                 } if running else None,
                 "uptime": int(time.time() - dev_server_start_time) if running and dev_server_start_time > 0 else 0,
                 "health": "good",
+                "players": random.randint(0, 8) if running else None,
                 "last_update": None,
                 "version": {
                     "current": "15000000",
@@ -1153,6 +1318,9 @@ def api_stats():
         
         # Get game version from logs if server is running
         game_version = get_game_version_from_logs() if running else None
+        
+        # Get player count if server is running
+        player_count = get_player_count() if running else None
 
         return jsonify({
             "state": current_state,
@@ -1160,6 +1328,7 @@ def api_stats():
             "icarus": get_icarus_usage() if running else None,
             "uptime": get_uptime() if running else 0,
             "health": get_health(stats),
+            "players": player_count,
             "last_update": {
                 "status": last_update_status,
                 "time": last_update_time
@@ -1237,6 +1406,101 @@ def api_logs():
         return jsonify({"logs": logs})
 
     return jsonify({"logs": ["[INFO] No log file found."]})
+
+@app.route("/api/startup-logs")
+def api_startup_logs():
+    """Get startup script logs from the game server directory"""
+    dev_mode_active = is_dev_mode()
+    
+    if dev_mode_active:
+        # Return dummy startup logs for dev mode
+        from datetime import datetime
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        dummy_logs = [
+            f"[{now}] [DEV MODE] Simulated startup logs",
+            f"[{now}] =========================================",
+            f"[{now}] Starting Icarus Server",
+            f"[{now}] =========================================",
+            f"[{now}] All checks passed - starting server in tmux session 'icarus'",
+            f"[{now}] Server started successfully in tmux session 'icarus'",
+        ]
+        return jsonify({"logs": dummy_logs})
+    
+    # Production mode - read startup.log from game directory
+    startup_log_path = f"{SERVER_DIR}/startup.log"
+    
+    if not os.path.exists(startup_log_path):
+        return jsonify({"logs": ["[INFO] No startup log file found."]})
+    
+    try:
+        with open(startup_log_path, "r", encoding="utf-8", errors="ignore") as f:
+            lines = [line.rstrip('\n\r') for line in f.readlines()[-200:]]  # Strip newlines and get last 200
+        
+        if not lines:
+            return jsonify({"logs": ["[INFO] Startup log is empty."]})
+        
+        return jsonify({"logs": lines})
+    except Exception as e:
+        logger.error(f"Error reading startup log: {e}")
+        return jsonify({"logs": [f"[ERROR] Failed to read startup log: {e}"]})
+@app.route("/api/clear-startup-logs", methods=["POST"])
+@rate_limit
+def api_clear_startup_logs():
+    """Clear the startup log file"""
+    log_activity("CLEAR startup logs")
+    
+    dev_mode_active = is_dev_mode()
+    
+    if dev_mode_active:
+        return jsonify({"success": True, "message": "Dev mode - no logs to clear"})
+    
+    startup_log_path = f"{SERVER_DIR}/startup.log"
+    
+    try:
+        if os.path.exists(startup_log_path):
+            # Archive the old log
+            archive_path = f"{startup_log_path}.old"
+            if os.path.exists(archive_path):
+                os.remove(archive_path)
+            os.rename(startup_log_path, archive_path)
+            logger.info("Startup log archived and cleared")
+            return jsonify({"success": True, "message": "Startup logs cleared and archived"})
+        else:
+            return jsonify({"success": True, "message": "No logs to clear"})
+    except Exception as e:
+        logger.error(f"Error clearing startup log: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/download-backup")
+@rate_limit
+def download_backup():
+    """Download the Expedition 404 save file"""
+    log_activity("DOWNLOAD backup")
+    
+    dev_mode_active = is_dev_mode()
+    
+    if dev_mode_active:
+        # Return a dummy file in dev mode
+        return make_response("Dev mode - no backup available", 404)
+    
+    backup_file = f"{SERVER_DIR}/Icarus/Saved/PlayerData/DedicatedServer/Prospects/Expedition 404.json"
+    
+    if not os.path.exists(backup_file):
+        logger.warning(f"Backup file not found: {backup_file}")
+        return make_response("Backup file not found", 404)
+    
+    try:
+        from flask import send_file
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        return send_file(
+            backup_file,
+            as_attachment=True,
+            download_name=f"Expedition_404_backup_{timestamp}.json",
+            mimetype="application/json"
+        )
+    except Exception as e:
+        logger.error(f"Error downloading backup: {e}")
+        return make_response(f"Error downloading backup: {e}", 500)
 
 @app.route("/api/history")
 def api_history():

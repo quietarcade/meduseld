@@ -1,16 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Control Panel |{% endblock %}
 {% block content %}
-  <!-- Back Button -->
+  <!-- Header Navigation -->
   <div class="container-fluid pt-3">
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div class="d-flex align-items-center gap-2">
         <a href="https://menu.meduseld.io" class="btn btn-warning btn-sm">
           <i class="cil-arrow-left"></i> Back to Services
         </a>
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
         <a href="https://ssh.meduseld.io" class="btn btn-dark btn-sm">
           <i class="cil-terminal"></i> SSH Terminal
         </a>
+        <a href="/download-backup" class="btn btn-success btn-sm" download>
+          <i class="cil-cloud-download"></i> Download Backup
+        </a>
+        <button class="btn btn-secondary btn-sm" disabled title="Coming soon">
+          <i class="cil-cloud-upload"></i> Backup Save to Cloud
+        </button>
       </div>
     </div>
   </div>
@@ -85,7 +93,8 @@
           <div id="update-badge" class="mb-2"></div>
 
           <h3 id="server-status" class="mt-2" title="Current state of the game server">Loading...</h3>
-          <small id="uptime-stat" class="d-block mb-4" title="How long the server has been running"></small>
+          <small id="uptime-stat" class="d-block mb-2" title="How long the server has been running"></small>
+          <small id="player-count" class="d-block mb-4" title="Number of players currently online">Players: --</small>
 
           <hr style="border-color: rgba(201,162,39,0.3);">
 
@@ -109,7 +118,7 @@
 
         <div class="col-6">
           <div class="card text-center h-100 control-card" onclick="action('/start')" id="start-card">
-            <div class="card-body d-flex flex-column justify-content-center">
+            <div class="card-body d-flex flex-column justify-content-center align-items-center">
               <i class="cil-media-play fs-3 mb-2"></i>
               <strong>Start</strong>
             </div>
@@ -118,7 +127,7 @@
 
         <div class="col-6">
           <div class="card text-center h-100 control-card" onclick="action('/stop')" id="stop-card">
-            <div class="card-body d-flex flex-column justify-content-center">
+            <div class="card-body d-flex flex-column justify-content-center align-items-center">
               <i class="cil-media-stop fs-3 mb-2"></i>
               <strong>Stop</strong>
             </div>
@@ -127,7 +136,7 @@
 
         <div class="col-6">
           <div class="card text-center h-100 control-card" onclick="action('/restart')" id="restart-card">
-            <div class="card-body d-flex flex-column justify-content-center">
+            <div class="card-body d-flex flex-column justify-content-center align-items-center">
               <i class="cil-loop-circular fs-3 mb-2"></i>
               <strong>Restart</strong>
             </div>
@@ -136,7 +145,7 @@
 
         <div class="col-6">
           <div class="card text-center h-100 control-card" onclick="action('/kill')" id="kill-card">
-            <div class="card-body d-flex flex-column justify-content-center">
+            <div class="card-body d-flex flex-column justify-content-center align-items-center">
               <i class="cil-x fs-3 mb-2"></i>
               <strong>Kill</strong>
             </div>
@@ -156,8 +165,24 @@
 <div class="row mt-4">
   <div class="col">
     <div class="card bg-dark text-white">
-      <div class="card-header">Live Logs</div>
+      <div class="card-header">Game Server Logs</div>
       <div class="card-body" id="log-container" style="height:400px; overflow-y:scroll; font-family:monospace;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== STARTUP LOGS PANEL ===== -->
+<div class="row mt-4">
+  <div class="col">
+    <div class="card bg-dark text-white">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Startup Script Logs</span>
+        <button class="btn btn-sm btn-outline-danger" onclick="clearStartupLogs()" title="Archive and clear startup logs">
+          <i class="cil-trash"></i> Clear Logs
+        </button>
+      </div>
+      <div class="card-body" id="startup-log-container" style="height:300px; overflow-y:scroll; font-family:monospace;">
       </div>
     </div>
   </div>
@@ -239,6 +264,17 @@
 
       document.getElementById("uptime-stat").innerText =
         formatUptime(data.uptime);
+      
+      // Update player count
+      const playerCountEl = document.getElementById("player-count");
+      if (data.players !== null && data.players !== undefined && data.state === "running") {
+        playerCountEl.innerText = `Players: ${data.players}/8`;
+        playerCountEl.style.color = data.players > 0 ? "#4f8f63" : "#888";
+      } else {
+        playerCountEl.innerText = "Players: --";
+        playerCountEl.style.color = "#888";
+      }
+      
       const pcStatus = document.getElementById("pc-status");
 
       if (res.ok) {
@@ -258,21 +294,21 @@
         if (data.health === "good") {
           healthBadge.innerHTML = `
       <span class="badge rounded-pill px-3 py-2 bg-success" title="System resources are within normal limits">
-        ⚔ Health: Good
+        ⚔ Health: <span style="color: #5cb85c; font-weight: bold;">Good</span>
       </span>`;
         }
 
         else if (data.health === "warning") {
           healthBadge.innerHTML = `
       <span class="badge rounded-pill px-3 py-2 bg-warning text-dark" title="CPU, RAM, or disk usage is approaching limits (80%+)">
-        ⚠ Health: Warning
+        ⚠ Health: <span style="color: #ff9800; font-weight: bold;">Warning</span>
       </span>`;
         }
 
         else {
           healthBadge.innerHTML = `
       <span class="badge rounded-pill px-3 py-2 bg-danger" title="CPU, RAM, or disk usage is critically high (95%+)">
-        ☠ Health: Critical
+        ☠ Health: <span style="color: #ff4444; font-weight: bold;">Critical</span>
       </span>`;
         }
       }
@@ -287,12 +323,12 @@
         if (data.version.update_available) {
           const updateTooltip = `Current Build: ${data.version.current || 'Unknown'} | Latest Build: ${data.version.latest || 'Unknown'}${gameVersion ? ' | ' + gameVersion : ''}`;
           updateBadge.innerHTML = `
-      <span class="badge rounded-pill px-3 py-2 bg-info text-dark" title="${updateTooltip}">
+      <span class="badge rounded-pill px-3 py-2 text-white" style="background-color: #4a90e2;" title="${updateTooltip}">
         🔄 Update Available
       </span>`;
         } else if (data.version.current && data.version.latest) {
           updateBadge.innerHTML = `
-      <span class="badge rounded-pill px-3 py-2 bg-secondary" title="${tooltipParts || 'Up to date'}">
+      <span class="badge rounded-pill px-3 py-2 text-white" style="background-color: #1f4d2b;" title="${tooltipParts || 'Up to date'}">
         ✓ Up to Date
       </span>`;
         } else {
@@ -457,8 +493,132 @@
     updateStats();
   }
 
-  // Track previous server state to detect transitions
+  // Track previous server state and version to detect transitions
   let previousServerState = null;
+  let previousGameVersion = null;
+  let previousBuildId = null;
+  let logSeparatorAdded = false;
+  
+  async function clearStartupLogs() {
+    if (confirm('Clear startup log file? This will archive the current logs.')) {
+      try {
+        const url = isDevMode ? "/api/clear-startup-logs?env=development" : "/api/clear-startup-logs";
+        const res = await fetch(url, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          updateStartupLogs();
+        } else {
+          alert('Failed to clear logs: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        console.error('Failed to clear startup logs:', err);
+        alert('Failed to clear logs');
+      }
+    }
+  }
+
+  async function updateStartupLogs() {
+    try {
+      const url = isDevMode ? "/api/startup-logs?env=development" : "/api/startup-logs";
+      const res = await fetch(url);
+      const data = await res.json();
+      const container = document.getElementById("startup-log-container");
+
+      // Check if user is scrolled to bottom
+      const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
+
+      if (data.logs && data.logs.length > 0) {
+        let logContent = '';
+        let lastSeparatorIndex = -1;
+        
+        // Process logs and add separators with color coding
+        for (let i = 0; i < data.logs.length; i++) {
+          const line = data.logs[i];
+          
+          // START separator (green - matches start button #1f4d2b)
+          if (line.includes('Starting Icarus Server') && i > lastSeparatorIndex + 1) {
+            logContent += `<div style="border-top: 2px solid #1f4d2b; margin: 10px 0; padding-top: 10px;">
+              <span style="color: #4f8f63; font-weight: bold;">▶ SERVER START INITIATED</span>
+            </div>`;
+            lastSeparatorIndex = i;
+          }
+          // STOP/EXIT separator (red - matches stop button #6b1e1e)
+          else if (line.includes('⏹ Server process exited')) {
+            logContent += `<div style="border-top: 2px solid #6b1e1e; margin: 10px 0; padding-top: 10px;">
+              <span style="color: #d9534f; font-weight: bold;">⏹ SERVER STOPPED</span>
+            </div>`;
+            logContent += `<span style="color: #d9534f; font-weight: bold;">${line}</span><br>`;
+            lastSeparatorIndex = i;
+            continue;
+          }
+          // Process monitor detected death
+          else if (line.includes('Process monitor: Server process no longer running')) {
+            logContent += `<div style="border-top: 2px solid #8b0000; margin: 10px 0; padding-top: 10px;">
+              <span style="color: #ff4444; font-weight: bold;">💥 PROCESS DIED UNEXPECTEDLY</span>
+            </div>`;
+            logContent += `<span style="color: #ff4444; font-weight: bold;">${line}</span><br>`;
+            lastSeparatorIndex = i;
+            continue;
+          }
+          // KILL separator (purple - matches kill button #3c1e6b)
+          else if (line.includes('killed') || line.includes('SIGKILL') || line.includes('force kill')) {
+            logContent += `<div style="border-top: 2px solid #3c1e6b; margin: 10px 0; padding-top: 10px;">
+              <span style="color: #8b5cf6; font-weight: bold;">✗ SERVER KILLED</span>
+            </div>`;
+            logContent += `<span style="color: #8b5cf6; font-weight: bold;">${line}</span><br>`;
+            lastSeparatorIndex = i;
+            continue;
+          }
+          // CRASH separator (dark red)
+          else if (line.includes('crash') || line.includes('Abnormal termination') || line.includes('Segmentation fault')) {
+            logContent += `<div style="border-top: 2px solid #8b0000; margin: 10px 0; padding-top: 10px;">
+              <span style="color: #ff4444; font-weight: bold;">💥 SERVER CRASHED</span>
+            </div>`;
+            logContent += `<span style="color: #ff4444; font-weight: bold;">${line}</span><br>`;
+            lastSeparatorIndex = i;
+            continue;
+          }
+          // Wine errors (only show err:, skip warn: and fixme:)
+          else if (line.includes('WINE:')) {
+            if (line.includes('err:')) {
+              logContent += `<span style="color: #ff9800;">${line}</span><br>`;
+            }
+            continue;
+          }
+          // Process health checks
+          else if (line.includes('Process health:')) {
+            logContent += `<span style="color: #888; font-size: 0.9em;">${line}</span><br>`;
+            continue;
+          }
+          
+          // Color coding for specific line types
+          if (line.includes('✓') || line.includes('Server started successfully') || line.includes('Clean shutdown')) {
+            logContent += `<span style="color: #5cb85c;">${line}</span><br>`;
+          } else if (line.includes('ERROR:')) {
+            logContent += `<span style="color: #d9534f; font-weight: bold;">${line}</span><br>`;
+          } else if (line.includes('WARNING:')) {
+            logContent += `<span style="color: #e6c65c; font-weight: bold;">${line}</span><br>`;
+          } else if (line.includes('✗')) {
+            logContent += `<span style="color: #ff4444;">${line}</span><br>`;
+          } else {
+            logContent += line + '<br>';
+          }
+        }
+        
+        container.innerHTML = logContent;
+      } else {
+        container.innerHTML = '<span style="color:#888;">No startup logs available</span>';
+      }
+
+      // Auto-scroll if user was at bottom
+      if (isScrolledToBottom) {
+        container.scrollTop = container.scrollHeight;
+      }
+    } catch (err) {
+      console.error("Failed to fetch startup logs:", err);
+      document.getElementById("startup-log-container").innerHTML = '<span style="color:#888;">Failed to load startup logs</span>';
+    }
+  }
 
   async function updateLogs() {
     // Add dev mode parameter if active
@@ -470,32 +630,76 @@
     // Check if user is scrolled to bottom (within 50px threshold)
     const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
 
-    // Get current server state
+    // Get current server state and version
     const statsRes = await fetch(isDevMode ? "/api/stats?env=development" : "/api/stats");
     const statsData = await statsRes.json();
     const currentState = statsData.state;
+    const currentGameVersion = statsData.version?.game_version;
+    const currentBuildId = statsData.version?.current;
 
-    // Check if state changed from/to running
-    let stateChanged = false;
+    // Determine what kind of separator to show
+    let separatorType = null;
+    let separatorMessage = '';
+    
     if (previousServerState !== null && previousServerState !== currentState) {
-      if ((previousServerState === "running" && currentState !== "running") ||
-          (previousServerState !== "running" && currentState === "running")) {
-        stateChanged = true;
+      // Server went from not running to running
+      if (previousServerState !== "running" && currentState === "running") {
+        // Check if version changed (update/restart with new version)
+        if (previousGameVersion && currentGameVersion && previousGameVersion !== currentGameVersion) {
+          separatorType = 'version-change';
+          separatorMessage = `Server started with NEW VERSION: ${currentGameVersion} (Build: ${currentBuildId})`;
+        } else if (previousBuildId && currentBuildId && previousBuildId !== currentBuildId) {
+          separatorType = 'build-change';
+          separatorMessage = `Server started with updated build: ${currentBuildId}`;
+        } else {
+          separatorType = 'restart';
+          separatorMessage = `Server restarted`;
+        }
+        logSeparatorAdded = false;
+      }
+      // Server went from running to not running
+      else if (previousServerState === "running" && currentState !== "running") {
+        separatorType = 'stopped';
+        separatorMessage = `Server stopped`;
+        logSeparatorAdded = false;
       }
     }
+    
+    // Update tracking variables
     previousServerState = currentState;
+    if (currentGameVersion) previousGameVersion = currentGameVersion;
+    if (currentBuildId) previousBuildId = currentBuildId;
 
     // Build log content
     let logContent = '';
     
-    // Add separator if state changed
-    if (stateChanged) {
+    // Add separator if needed and not already added
+    if (separatorType && !logSeparatorAdded) {
       const timestamp = new Date().toLocaleString();
-      logContent = `<div style="border-top: 2px solid #c9a227; margin: 10px 0; padding-top: 10px;">
-        <span style="color: #c9a227; font-weight: bold;">═══════════════════════════════════════════════════════</span><br>
-        <span style="color: #c9a227;">Server state changed at ${timestamp}</span><br>
-        <span style="color: #c9a227; font-weight: bold;">═══════════════════════════════════════════════════════</span>
+      let separatorColor = '#c9a227';
+      let icon = '⚔';
+      
+      if (separatorType === 'version-change') {
+        separatorColor = '#4f8f63';
+        icon = '🔄';
+      } else if (separatorType === 'build-change') {
+        separatorColor = '#7a6516';
+        icon = '📦';
+      } else if (separatorType === 'stopped') {
+        separatorColor = '#8b1e1e';
+        icon = '⏹';
+      } else if (separatorType === 'restart') {
+        separatorColor = '#e6c65c';
+        icon = '🔃';
+      }
+      
+      logContent = `<div style="border-top: 2px solid ${separatorColor}; margin: 10px 0; padding-top: 10px;">
+        <span style="color: ${separatorColor}; font-weight: bold;">═══════════════════════════════════════════════════════</span><br>
+        <span style="color: ${separatorColor}; font-weight: bold;">${icon} ${separatorMessage}</span><br>
+        <span style="color: ${separatorColor}; font-size: 0.9em;">${timestamp}</span><br>
+        <span style="color: ${separatorColor}; font-weight: bold;">═══════════════════════════════════════════════════════</span>
       </div>`;
+      logSeparatorAdded = true;
     }
 
     if (data.logs.length === 1 && data.logs[0].startsWith("[INFO]")) {
@@ -514,8 +718,16 @@
 
   updateStats();
   updateLogs();
+  updateStartupLogs();
   startPolling();
   setInterval(updateLogs, 5000);
+  setInterval(updateStartupLogs, 5000);
+  
+  // Set initial button states from server-side render
+  const initialState = "{{ server_state }}";
+  if (initialState) {
+    updateButtonStates(initialState);
+  }
 
   // Check for development mode URL parameter (already declared above)
   if (isDevMode) {
@@ -540,15 +752,15 @@
         {
           label: 'System CPU %',
           data: [],
-          borderColor: '#c9a227',
-          backgroundColor: 'rgba(201,162,39,0.2)',
+          borderColor: '#e6c65c',
+          backgroundColor: 'rgba(230,198,92,0.25)',
           tension: 0.3
         },
         {
           label: 'Server CPU %',
           data: [],
-          borderColor: '#e6c65c',
-          backgroundColor: 'rgba(230,198,92,0.25)',
+          borderColor: '#4f8f63',
+          backgroundColor: 'rgba(79,143,99,0.3)',
           tension: 0.3
         }
       ]
@@ -576,8 +788,8 @@
         {
           label: 'System RAM (GB)',
           data: [],
-          borderColor: '#2f5e3f',
-          backgroundColor: 'rgba(47,94,63,0.25)',
+          borderColor: '#e6c65c',
+          backgroundColor: 'rgba(230,198,92,0.25)',
           tension: 0.3
         },
         {

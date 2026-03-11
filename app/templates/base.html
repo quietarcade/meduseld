@@ -40,8 +40,16 @@
       cursor: text !important;
     }
     
-    /* Pointer cursor for interactive elements */
-    button, a, .btn, input[type="button"], input[type="submit"], .control-card {
+    /* Pointer cursor for interactive elements - must come after default */
+    button, 
+    a, 
+    .btn, 
+    input[type="button"], 
+    input[type="submit"], 
+    .control-card,
+    .control-card *,
+    div.control-card,
+    .card.control-card {
       cursor: pointer !important;
     }
 
@@ -123,7 +131,7 @@
     }
 
     .control-card {
-      cursor: pointer;
+      cursor: pointer !important;
       transition: all 0.25s ease;
       border: 1px solid rgba(201, 162, 39, 0.3);
       color: #e6c65c;

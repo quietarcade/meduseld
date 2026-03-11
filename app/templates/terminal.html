@@ -30,6 +30,35 @@
             width: 100%;
             height: 100%;
         }
+        
+        @media (max-width: 768px) {
+            .navbar-custom {
+                padding: 8px 12px;
+            }
+            
+            .navbar-custom .d-flex {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            
+            .navbar-custom .text-white {
+                font-size: 0.9rem;
+                width: 100%;
+                margin-bottom: 4px;
+            }
+            
+            .navbar-custom > .d-flex > div:last-child {
+                width: 100%;
+                display: flex;
+                justify-content: flex-end;
+                gap: 8px;
+            }
+            
+            .navbar-custom .btn-sm {
+                font-size: 0.8rem;
+                padding: 4px 8px;
+            }
+        }
     </style>
 </head>
 <body>

@@ -2,6 +2,67 @@
 
 All notable changes to the Meduseld Server Control Panel project.
 
+## [0.3.0-alpha] - 2026-03-11
+
+### Server Stability & Diagnostics
+
+#### Enhanced Startup & Monitoring
+- **Improved Start Script**: Complete rewrite with comprehensive error handling and diagnostics
+- **Startup Log Persistence**: All server start/stop/crash events now persist in `~/games/icarus/startup.log`
+- **Process Health Monitoring**: Automatic health checks every 5 minutes (CPU, RAM, threads)
+- **Wine Error Logging**: Captures Wine errors while filtering out harmless warnings
+- **Exit Code Detection**: Identifies crash types (SIGKILL, segfault, SIGTERM, clean shutdown)
+- **Process Monitor**: Detects when server dies unexpectedly and logs the event
+- **Stale Session Cleanup**: Automatically removes dead tmux sessions before starting
+
+#### Startup Script Logs Panel
+- New dedicated panel for startup/shutdown/crash history
+- Color-coded separators matching control buttons (green=start, red=stop, purple=kill, dark red=crash)
+- Shows Wine configuration, process health checks, and exit codes
+- Clear logs button with archiving to `.old` file
+- Real-time updates every 5 seconds
+
+#### Bug Fixes
+- **Fixed Wine Crash**: Resolved "Read access denied for device L:\\??\\Z:\\" error by setting `WINEDEBUG=-all`
+- **Fixed systemd Killing Server**: Changed `KillMode=mixed` to `KillMode=process` to prevent webserver restarts from killing game server
+- **Fixed Process Detection**: Enhanced `is_running()` to properly detect Wine-wrapped server process
+- **Fixed Button Loading Delay**: Pass `server_state` to template for instant button state on page load
+
+### UI/UX Improvements
+
+#### Control Panel Enhancements
+- **Player Count Display**: Shows current online players (X/8) via Steam Query Protocol
+- **Download Backup Button**: Download save file (`Expedition 404.json`) with timestamp
+- **Backup to Cloud Button**: Added (disabled/coming soon)
+- **Button Layout**: Moved SSH Terminal and Download Backup to top right header
+- **Responsive Header**: Added flex-wrap for better mobile button layout
+- **Button Sizing**: Fixed control buttons to match server status panel height
+- **Cursor Improvements**: Buttons now show pointer cursor on hover
+
+#### Visual Updates
+- **Graph Colors**: Server metrics in green, system metrics in yellow (both CPU and RAM graphs)
+- **Update Badge**: Changed to blue background for "Update Available"
+- **Up to Date Badge**: Changed to green background
+- **Health Badge**: Color-coded text (Good=green, Warning=orange, Critical=red)
+- **Log Separators**: Color-coded separators in game server logs for version changes, restarts, stops
+
+#### Menu Page Updates
+- **VPN Access Card**: Added coming soon card for OpenVPN integration
+- **Game Prices**: Shows Steam prices with sale badges and discount percentages
+- **Production Badge**: Changed text color to white for better visibility
+- **News Badge Click**: Fixed to not toggle panel when clicking badge tooltip
+
+#### SSH Terminal Page
+- **Mobile Responsive**: Fixed button layout on mobile devices
+- Buttons now properly align to top right on all screen sizes
+
+### Technical Improvements
+- Added Steam Query Protocol (A2S_INFO) implementation for player count
+- Enhanced logging throughout startup process
+- Better error messages and diagnostic information
+- Improved process validation before reporting success
+- Added socket and struct imports for network queries
+
 ## [0.2.0-alpha] - 2026-03-10
 
 ### Major Updates
