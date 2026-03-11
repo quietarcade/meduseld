@@ -173,14 +173,14 @@ for i in {1..10}; do
         (
             sleep 30  # Wait 30 seconds before first check
             while pgrep -f "IcarusServer-Win64-Shipping.exe" > /dev/null; do
-                PID=$(pgrep -f 'IcarusServer-Win64-Shipping.exe')
+                PID=$(pgrep -f 'IcarusServer-Win64-Shipping.exe' | head -1)
                 if [ -n "$PID" ] && ps -p $PID > /dev/null 2>&1; then
-                    CPU=$(ps -p $PID -o %cpu= 2>/dev/null | tr -d ' ')
-                    MEM=$(ps -p $PID -o %mem= 2>/dev/null | tr -d ' ')
-                    THREADS=$(ps -p $PID -o nlwp= 2>/dev/null | tr -d ' ')
+                    CPU=$(ps -p $PID -o %cpu= 2>/dev/null | awk '{print $1}')
+                    MEM=$(ps -p $PID -o %mem= 2>/dev/null | awk '{print $1}')
+                    THREADS=$(ps -p $PID -o nlwp= 2>/dev/null | awk '{print $1}')
                     
-                    # Only log if we got valid data (not empty strings)
-                    if [ -n "$CPU" ] && [ -n "$MEM" ] && [ -n "$THREADS" ] && [ "$CPU" != "" ] && [ "$MEM" != "" ] && [ "$THREADS" != "" ]; then
+                    # Only log if we got valid numeric data
+                    if [ -n "$CPU" ] && [ -n "$MEM" ] && [ -n "$THREADS" ] && echo "$CPU" | grep -qE '^[0-9.]+$' && echo "$MEM" | grep -qE '^[0-9.]+$' && echo "$THREADS" | grep -qE '^[0-9]+$'; then
                         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Process health: PID=$PID CPU=${CPU}% MEM=${MEM}% Threads=$THREADS" >> "$LOG_FILE"
                     fi
                 fi
