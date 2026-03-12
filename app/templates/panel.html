@@ -1,42 +1,47 @@
-{% extends "base.html" %}
-{% block title %}Control Panel |{% endblock %}
-{% block content %}
-  <!-- Header Navigation -->
-  <div class="container-fluid pt-3">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <div class="d-flex align-items-center gap-2">
-        <a href="https://menu.meduseld.io" class="btn btn-warning btn-sm">
-          <i class="cil-arrow-left"></i> Back to Services
-        </a>
-      </div>
-      <div class="d-flex align-items-center gap-2 flex-wrap">
-        <a href="https://ssh.meduseld.io" class="btn btn-dark btn-sm">
-          <i class="cil-terminal"></i> SSH Terminal
-        </a>
-        <a href="/download-backup" class="btn btn-success btn-sm" download>
-          <i class="cil-cloud-download"></i> Download Backup
-        </a>
-        <button class="btn btn-secondary btn-sm" disabled title="Coming soon">
-          <i class="cil-cloud-upload"></i> Backup Save to Cloud
-        </button>
-      </div>
+{% extends "base.html" %} {% block title %}Control Panel |{% endblock %} {% block content %}
+<!-- Header Navigation -->
+<div class="container-fluid pt-3">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <a href="https://menu.meduseld.io" class="btn btn-warning btn-sm">
+        <i class="cil-arrow-left"></i> Back to Services
+      </a>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <a href="https://ssh.meduseld.io" class="btn btn-dark btn-sm">
+        <i class="cil-terminal"></i> SSH Terminal
+      </a>
+      <a href="/download-backup" class="btn btn-success btn-sm" download>
+        <i class="cil-cloud-download"></i> Download Backup
+      </a>
+      <a href="/backup-to-cloud" class="btn btn-primary btn-sm">
+        <i class="cil-cloud-upload"></i> Backup Save to Cloud
+      </a>
     </div>
   </div>
-  
-  <!-- Logo and Dev Mode Badge -->
-  <div class="d-flex flex-column justify-content-center align-items-center mt-3 mb-3">
-    <a target="_blank" rel="noopener noreferrer" href="https://www.youtube.com/watch?v=7lwJOxN_gXc&t=48s"
-      class="rohan-logo-wrapper mb-3">
-      <img src="{{ url_for('static', filename='meduseldminimal.png') }}" class="rohan-logo">
-    </a>
-    <span id="dev-mode-badge" class="badge text-dark px-3 py-2" style="font-size: 0.85rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: 2px solid #5a67d8; display: {% if dev_mode %}inline-block{% else %}none{% endif %};">
-      <i class="cil-terminal"></i> DEVELOPMENT MODE
-    </span>
-  </div>
+</div>
+
+<!-- Logo and Dev Mode Badge -->
+<div class="d-flex flex-column justify-content-center align-items-center mt-3 mb-3">
+  <a
+    target="_blank"
+    rel="noopener noreferrer"
+    href="https://www.youtube.com/watch?v=7lwJOxN_gXc&t=48s"
+    class="rohan-logo-wrapper mb-3"
+  >
+    <img src="{{ url_for('static', filename='meduseldminimal.png') }}" class="rohan-logo" />
+  </a>
+  <span
+    id="dev-mode-badge"
+    class="badge text-dark px-3 py-2"
+    style="font-size: 0.85rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: 2px solid #5a67d8; display: {% if dev_mode %}inline-block{% else %}none{% endif %};"
+  >
+    <i class="cil-terminal"></i> DEVELOPMENT MODE
+  </span>
+</div>
 <div class="container-fluid py-4">
   <!-- ===== SYSTEM STATUS ROW ===== -->
   <div class="row g-4">
-
     <!-- PC Status -->
     <div class="col-md-3">
       <div class="card text-white bg-dark">
@@ -76,13 +81,10 @@
         </div>
       </div>
     </div>
-
   </div>
-
 
   <!-- ===== GAME SERVER CONTROL ROW ===== -->
   <div class="row mt-4 g-4 align-items-stretch">
-
     <!-- SERVER STATUS CARD (LEFT SIDE) -->
     <div class="col-md-6">
       <div class="card text-white h-100" id="server-status-card">
@@ -92,11 +94,19 @@
           <div id="health-badge" class="mb-2"></div>
           <div id="update-badge" class="mb-2"></div>
 
-          <h3 id="server-status" class="mt-2" title="Current state of the game server">Loading...</h3>
-          <small id="uptime-stat" class="d-block mb-2" title="How long the server has been running"></small>
-          <small id="player-count" class="d-block mb-4" title="Number of players currently online">Players: --</small>
+          <h3 id="server-status" class="mt-2" title="Current state of the game server">
+            Loading...
+          </h3>
+          <small
+            id="uptime-stat"
+            class="d-block mb-2"
+            title="How long the server has been running"
+          ></small>
+          <small id="player-count" class="d-block mb-4" title="Number of players currently online"
+            >Players: --</small
+          >
 
-          <hr style="border-color: rgba(201,162,39,0.3);">
+          <hr style="border-color: rgba(201, 162, 39, 0.3)" />
 
           <div class="row mt-3">
             <div class="col-6">
@@ -115,9 +125,12 @@
     <!-- BUTTON GRID (RIGHT SIDE) -->
     <div class="col-md-6">
       <div class="row g-4 h-100">
-
         <div class="col-6">
-          <div class="card text-center h-100 control-card" onclick="action('/start')" id="start-card">
+          <div
+            class="card text-center h-100 control-card"
+            onclick="action('/start')"
+            id="start-card"
+          >
             <div class="card-body d-flex flex-column justify-content-center align-items-center">
               <i class="cil-media-play fs-3 mb-2"></i>
               <strong>Start</strong>
@@ -135,7 +148,11 @@
         </div>
 
         <div class="col-6">
-          <div class="card text-center h-100 control-card" onclick="action('/restart')" id="restart-card">
+          <div
+            class="card text-center h-100 control-card"
+            onclick="action('/restart')"
+            id="restart-card"
+          >
             <div class="card-body d-flex flex-column justify-content-center align-items-center">
               <i class="cil-loop-circular fs-3 mb-2"></i>
               <strong>Restart</strong>
@@ -151,23 +168,21 @@
             </div>
           </div>
         </div>
-
       </div>
     </div>
-
   </div>
-
-
 </div>
-
 
 <!-- ===== LOG PANEL ===== -->
 <div class="row mt-4">
   <div class="col">
     <div class="card bg-dark text-white">
       <div class="card-header">Game Server Logs</div>
-      <div class="card-body" id="log-container" style="height:400px; overflow-y:scroll; font-family:monospace;">
-      </div>
+      <div
+        class="card-body"
+        id="log-container"
+        style="height: 400px; overflow-y: scroll; font-family: monospace"
+      ></div>
     </div>
   </div>
 </div>
@@ -178,12 +193,19 @@
     <div class="card bg-dark text-white">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span>Startup Script Logs</span>
-        <button class="btn btn-sm btn-outline-danger" onclick="clearStartupLogs()" title="Archive and clear startup logs">
+        <button
+          class="btn btn-sm btn-outline-danger"
+          onclick="clearStartupLogs()"
+          title="Archive and clear startup logs"
+        >
           <i class="cil-trash"></i> Clear Logs
         </button>
       </div>
-      <div class="card-body" id="startup-log-container" style="height:300px; overflow-y:scroll; font-family:monospace;">
-      </div>
+      <div
+        class="card-body"
+        id="startup-log-container"
+        style="height: 300px; overflow-y: scroll; font-family: monospace"
+      ></div>
     </div>
   </div>
 </div>
@@ -210,7 +232,7 @@
 </div>
 <div class="d-flex justify-content-center mt-5 mb-3">
   <a href="https://www.youtube.com/watch?v=WtO3AHMBePY" class="rohan-logo-wrapper">
-    <img src="{{ url_for('static', filename='logo.png') }}" class="rohan-logo">
+    <img src="{{ url_for('static', filename='logo.png') }}" class="rohan-logo" />
   </a>
 </div>
 
@@ -218,94 +240,89 @@
   // Check if we're in development mode (declare this first)
   const urlParams = new URLSearchParams(window.location.search);
   const isDevMode = urlParams.get('env') === 'development';
-  
+
   let lastUptime = 0;
   async function updateStats() {
     try {
       // Add dev mode parameter if active
-      const url = isDevMode ? "/api/stats?env=development" : "/api/stats";
+      const url = isDevMode ? '/api/stats?env=development' : '/api/stats';
       const res = await fetch(url);
       const data = await res.json();
 
       // 🔥 Dynamic tab title
-      if (data.state === "running") {
-        document.title = "🟢 Panel | Meduseld";
-      } else if (data.state === "crashed") {
-        document.title = "💥 CRASHED | Meduseld";
-      } else if (data.state === "restarting") {
-        document.title = "🟡 Restarting | Meduseld";
-      } else if (data.state === "starting") {
-        document.title = "🟡 Starting | Meduseld";
-      } else if (data.state === "stopping") {
-        document.title = "🟠 Stopping | Meduseld";
+      if (data.state === 'running') {
+        document.title = '🟢 Panel | Meduseld';
+      } else if (data.state === 'crashed') {
+        document.title = '💥 CRASHED | Meduseld';
+      } else if (data.state === 'restarting') {
+        document.title = '🟡 Restarting | Meduseld';
+      } else if (data.state === 'starting') {
+        document.title = '🟡 Starting | Meduseld';
+      } else if (data.state === 'stopping') {
+        document.title = '🟠 Stopping | Meduseld';
       } else {
-        document.title = "🔴 Offline | Meduseld";
+        document.title = '🔴 Offline | Meduseld';
       }
 
       // System stats
-      document.getElementById("cpu-stat").innerText = data.stats.cpu + "%";
-      document.getElementById("ram-stat").innerText = data.stats.ram_used + " / " + data.stats.ram_total + " GB";
-      document.getElementById("disk-stat").innerText = data.stats.disk_used + " / " + data.stats.disk_total + " GB";
+      document.getElementById('cpu-stat').innerText = data.stats.cpu + '%';
+      document.getElementById('ram-stat').innerText =
+        data.stats.ram_used + ' / ' + data.stats.ram_total + ' GB';
+      document.getElementById('disk-stat').innerText =
+        data.stats.disk_used + ' / ' + data.stats.disk_total + ' GB';
 
       // Icarus stats
-      const icarusCpuEl = document.getElementById("icarus-cpu-stat");
-      const icarusRamEl = document.getElementById("icarus-ram-stat");
+      const icarusCpuEl = document.getElementById('icarus-cpu-stat');
+      const icarusRamEl = document.getElementById('icarus-ram-stat');
 
-      if (data.icarus && data.state === "running") {
+      if (data.icarus && data.state === 'running') {
         // Calculate cores used (raw % / 100 = cores)
         const coresUsed = (data.icarus.cpu_raw / 100).toFixed(1);
-        icarusCpuEl.innerText = coresUsed + " cores (" + data.icarus.cpu_raw + "%)";
-        icarusRamEl.innerText = data.icarus.ram + " / " + data.stats.ram_total + " GB";
+        icarusCpuEl.innerText = coresUsed + ' cores (' + data.icarus.cpu_raw + '%)';
+        icarusRamEl.innerText = data.icarus.ram + ' / ' + data.stats.ram_total + ' GB';
       } else {
-        icarusCpuEl.innerText = "--";
-        icarusRamEl.innerText = "--";
+        icarusCpuEl.innerText = '--';
+        icarusRamEl.innerText = '--';
       }
 
+      document.getElementById('uptime-stat').innerText = formatUptime(data.uptime);
 
-      document.getElementById("uptime-stat").innerText =
-        formatUptime(data.uptime);
-      
       // Update player count
-      const playerCountEl = document.getElementById("player-count");
-      if (data.players !== null && data.players !== undefined && data.state === "running") {
+      const playerCountEl = document.getElementById('player-count');
+      if (data.players !== null && data.players !== undefined && data.state === 'running') {
         playerCountEl.innerText = `Players: ${data.players}/8`;
-        playerCountEl.style.color = data.players > 0 ? "#4f8f63" : "#888";
+        playerCountEl.style.color = data.players > 0 ? '#4f8f63' : '#888';
       } else {
-        playerCountEl.innerText = "Players: --";
-        playerCountEl.style.color = "#888";
+        playerCountEl.innerText = 'Players: --';
+        playerCountEl.style.color = '#888';
       }
-      
-      const pcStatus = document.getElementById("pc-status");
+
+      const pcStatus = document.getElementById('pc-status');
 
       if (res.ok) {
-        pcStatus.innerText = "Online";
-        pcStatus.parentElement.parentElement.classList.remove("bg-danger");
-        pcStatus.parentElement.parentElement.classList.add("bg-success");
+        pcStatus.innerText = 'Online';
+        pcStatus.parentElement.parentElement.classList.remove('bg-danger');
+        pcStatus.parentElement.parentElement.classList.add('bg-success');
       } else {
-        pcStatus.innerText = "Offline";
-        pcStatus.parentElement.parentElement.classList.remove("bg-success");
-        pcStatus.parentElement.parentElement.classList.add("bg-danger");
+        pcStatus.innerText = 'Offline';
+        pcStatus.parentElement.parentElement.classList.remove('bg-success');
+        pcStatus.parentElement.parentElement.classList.add('bg-danger');
       }
 
-
-      const healthBadge = document.getElementById("health-badge");
+      const healthBadge = document.getElementById('health-badge');
 
       if (healthBadge) {
-        if (data.health === "good") {
+        if (data.health === 'good') {
           healthBadge.innerHTML = `
       <span class="badge rounded-pill px-3 py-2 bg-success" title="System resources are within normal limits">
         ⚔ Health: <span style="color: #5cb85c; font-weight: bold;">Good</span>
       </span>`;
-        }
-
-        else if (data.health === "warning") {
+        } else if (data.health === 'warning') {
           healthBadge.innerHTML = `
       <span class="badge rounded-pill px-3 py-2 bg-warning text-dark" title="CPU, RAM, or disk usage is approaching limits (80%+)">
         ⚠ Health: <span style="color: #ff9800; font-weight: bold;">Warning</span>
       </span>`;
-        }
-
-        else {
+        } else {
           healthBadge.innerHTML = `
       <span class="badge rounded-pill px-3 py-2 bg-danger" title="CPU, RAM, or disk usage is critically high (95%+)">
         ☠ Health: <span style="color: #ff4444; font-weight: bold;">Critical</span>
@@ -314,12 +331,12 @@
       }
 
       // Update badge
-      const updateBadge = document.getElementById("update-badge");
+      const updateBadge = document.getElementById('update-badge');
       if (updateBadge && data.version) {
         const gameVersion = data.version.game_version ? `Game: ${data.version.game_version}` : '';
         const buildInfo = data.version.current ? `Build: ${data.version.current}` : '';
-        const tooltipParts = [gameVersion, buildInfo].filter(p => p).join(' | ');
-        
+        const tooltipParts = [gameVersion, buildInfo].filter((p) => p).join(' | ');
+
         if (data.version.update_available) {
           const updateTooltip = `Current Build: ${data.version.current || 'Unknown'} | Latest Build: ${data.version.latest || 'Unknown'}${gameVersion ? ' | ' + gameVersion : ''}`;
           updateBadge.innerHTML = `
@@ -332,104 +349,88 @@
         ✓ Up to Date
       </span>`;
         } else {
-          updateBadge.innerHTML = "";
+          updateBadge.innerHTML = '';
         }
       }
 
-
-      const uptimeEl = document.getElementById("uptime-stat");
+      const uptimeEl = document.getElementById('uptime-stat');
 
       // Status
-      const statusEl = document.getElementById("server-status");
-      const statusCard = statusEl.closest(".card");
+      const statusEl = document.getElementById('server-status');
+      const statusCard = statusEl.closest('.card');
 
-      statusCard.style.backgroundColor = "";
+      statusCard.style.backgroundColor = '';
 
-      if (data.state === "running") {
-        statusEl.innerText = "Running";
-        statusCard.style.backgroundColor = "#1f4d2b";
-      }
-      else if (data.state === "offline") {
-        statusEl.innerText = "Offline";
-        statusCard.style.backgroundColor = "#6b1e1e";
-      }
-      else if (data.state === "crashed") {
-        statusEl.innerText = "⚠ CRASHED";
-        statusCard.style.backgroundColor = "#8b0000";
-      }
-      else {
-        statusEl.innerText =
-          data.state.charAt(0).toUpperCase() + data.state.slice(1) + "...";
-        statusCard.style.backgroundColor = "#7a6516";
+      if (data.state === 'running') {
+        statusEl.innerText = 'Running';
+        statusCard.style.backgroundColor = '#1f4d2b';
+      } else if (data.state === 'offline') {
+        statusEl.innerText = 'Offline';
+        statusCard.style.backgroundColor = '#6b1e1e';
+      } else if (data.state === 'crashed') {
+        statusEl.innerText = '⚠ CRASHED';
+        statusCard.style.backgroundColor = '#8b0000';
+      } else {
+        statusEl.innerText = data.state.charAt(0).toUpperCase() + data.state.slice(1) + '...';
+        statusCard.style.backgroundColor = '#7a6516';
       }
       updateButtonStates(data.state);
     } catch (err) {
       console.error(err);
     }
-
   }
 
   function updateButtonStates(state) {
-
-    const startCard = document.getElementById("start-card");
-    const stopCard = document.getElementById("stop-card");
-    const restartCard = document.getElementById("restart-card");
-    const killCard = document.getElementById("kill-card");
+    const startCard = document.getElementById('start-card');
+    const stopCard = document.getElementById('stop-card');
+    const restartCard = document.getElementById('restart-card');
+    const killCard = document.getElementById('kill-card');
 
     const allCards = [startCard, stopCard, restartCard, killCard];
 
     // Reset everything
-    allCards.forEach(card => {
+    allCards.forEach((card) => {
       if (!card) return;
       card.classList.remove(
-        "disabled",
-        "control-start",
-        "control-stop",
-        "control-restart",
-        "control-kill"
+        'disabled',
+        'control-start',
+        'control-stop',
+        'control-restart',
+        'control-kill'
       );
     });
 
-    if (state === "offline") {
-      startCard.classList.add("control-start");
+    if (state === 'offline') {
+      startCard.classList.add('control-start');
 
-      stopCard.classList.add("disabled");
-      restartCard.classList.add("disabled");
-      killCard.classList.add("disabled");
-    }
+      stopCard.classList.add('disabled');
+      restartCard.classList.add('disabled');
+      killCard.classList.add('disabled');
+    } else if (state === 'running') {
+      stopCard.classList.add('control-stop');
+      restartCard.classList.add('control-restart');
+      killCard.classList.add('control-kill');
 
-    else if (state === "running") {
-      stopCard.classList.add("control-stop");
-      restartCard.classList.add("control-restart");
-      killCard.classList.add("control-kill");
+      startCard.classList.add('disabled');
+    } else if (state === 'restarting') {
+      killCard.classList.add('control-kill');
 
-      startCard.classList.add("disabled");
-    }
+      startCard.classList.add('disabled');
+      stopCard.classList.add('disabled');
+      restartCard.classList.add('disabled');
+    } else if (state === 'starting' || state === 'stopping') {
+      allCards.forEach((card) => card.classList.add('disabled'));
+    } else if (state === 'crashed') {
+      startCard.classList.add('control-start');
 
-    else if (state === "restarting") {
-      killCard.classList.add("control-kill");
-
-      startCard.classList.add("disabled");
-      stopCard.classList.add("disabled");
-      restartCard.classList.add("disabled");
-    }
-
-    else if (state === "starting" || state === "stopping") {
-      allCards.forEach(card => card.classList.add("disabled"));
-    }
-
-    else if (state === "crashed") {
-      startCard.classList.add("control-start");
-
-      stopCard.classList.add("disabled");
-      restartCard.classList.add("disabled");
-      killCard.classList.add("disabled");
+      stopCard.classList.add('disabled');
+      restartCard.classList.add('disabled');
+      killCard.classList.add('disabled');
     }
   }
 
-
   function formatUptime(seconds) {
-    if (!seconds || seconds <= 0) return "--";
+    if (!seconds || seconds <= 0) return '--';
 
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
@@ -438,13 +439,13 @@
 
     let parts = [];
 
-    if (days > 0) parts.push(days + "d");
-    if (hours > 0) parts.push(hours + "h");
-    if (minutes > 0) parts.push(minutes + "m");
+    if (days > 0) parts.push(days + 'd');
+    if (hours > 0) parts.push(hours + 'h');
+    if (minutes > 0) parts.push(minutes + 'm');
 
-    parts.push(secs + "s");
+    parts.push(secs + 's');
 
-    return parts.join(" ");
+    return parts.join(' ');
   }
 
   let pollInterval = 5000;
@@ -459,12 +460,12 @@
     try {
       // Add dev mode parameter if active
       const url = isDevMode ? `${endpoint}?env=development` : endpoint;
-      const res = await fetch(url, { method: "POST" });
+      const res = await fetch(url, { method: 'POST' });
 
       if (res.status === 429) {
         const data = await res.json();
         const remaining = data.remaining || 'a few';
-        alert("Restart cooldown active. Try again in " + remaining + " seconds.");
+        alert('Restart cooldown active. Try again in ' + remaining + ' seconds.');
         return;
       }
 
@@ -483,13 +484,12 @@
     }
   }
 
-
   async function confirmKill() {
-    const confirmed = confirm("Force kill the server immediately? This may cause data loss.");
+    const confirmed = confirm('Force kill the server immediately? This may cause data loss.');
 
     if (!confirmed) return;
 
-    await fetch("/kill", { method: "POST" });
+    await fetch('/kill', { method: 'POST' });
     updateStats();
   }
 
@@ -498,11 +498,13 @@
   let previousGameVersion = null;
   let previousBuildId = null;
   let logSeparatorAdded = false;
-  
+
   async function clearStartupLogs() {
     if (confirm('Clear startup log file? This will archive the current logs.')) {
       try {
-        const url = isDevMode ? "/api/clear-startup-logs?env=development" : "/api/clear-startup-logs";
+        const url = isDevMode
+          ? '/api/clear-startup-logs?env=development'
+          : '/api/clear-startup-logs';
         const res = await fetch(url, { method: 'POST' });
         const data = await res.json();
         if (data.success) {
@@ -519,22 +521,23 @@
 
   async function updateStartupLogs() {
     try {
-      const url = isDevMode ? "/api/startup-logs?env=development" : "/api/startup-logs";
+      const url = isDevMode ? '/api/startup-logs?env=development' : '/api/startup-logs';
       const res = await fetch(url);
       const data = await res.json();
-      const container = document.getElementById("startup-log-container");
+      const container = document.getElementById('startup-log-container');
 
       // Check if user is scrolled to bottom
-      const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
+      const isScrolledToBottom =
+        container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
 
       if (data.logs && data.logs.length > 0) {
         let logContent = '';
         let lastSeparatorIndex = -1;
-        
+
         // Process logs and add separators with color coding
         for (let i = 0; i < data.logs.length; i++) {
           const line = data.logs[i];
-          
+
           // START separator (green - matches start button #1f4d2b)
           if (line.includes('Starting Icarus Server') && i > lastSeparatorIndex + 1) {
             logContent += `<div style="border-top: 2px solid #1f4d2b; margin: 10px 0; padding-top: 10px;">
@@ -561,7 +564,11 @@
             continue;
           }
           // KILL separator (purple - matches kill button #3c1e6b)
-          else if (line.includes('killed') || line.includes('SIGKILL') || line.includes('force kill')) {
+          else if (
+            line.includes('killed') ||
+            line.includes('SIGKILL') ||
+            line.includes('force kill')
+          ) {
             logContent += `<div style="border-top: 2px solid #3c1e6b; margin: 10px 0; padding-top: 10px;">
               <span style="color: #8b5cf6; font-weight: bold;">✗ SERVER KILLED</span>
             </div>`;
@@ -570,7 +577,11 @@
             continue;
           }
           // CRASH separator (dark red)
-          else if (line.includes('crash') || line.includes('Abnormal termination') || line.includes('Segmentation fault')) {
+          else if (
+            line.includes('crash') ||
+            line.includes('Abnormal termination') ||
+            line.includes('Segmentation fault')
+          ) {
             logContent += `<div style="border-top: 2px solid #8b0000; margin: 10px 0; padding-top: 10px;">
               <span style="color: #ff4444; font-weight: bold;">💥 SERVER CRASHED</span>
             </div>`;
@@ -590,9 +601,13 @@
             logContent += `<span style="color: #888; font-size: 0.9em;">${line}</span><br>`;
             continue;
           }
-          
+
           // Color coding for specific line types
-          if (line.includes('✓') || line.includes('Server started successfully') || line.includes('Clean shutdown')) {
+          if (
+            line.includes('✓') ||
+            line.includes('Server started successfully') ||
+            line.includes('Clean shutdown')
+          ) {
             logContent += `<span style="color: #5cb85c;">${line}</span><br>`;
           } else if (line.includes('ERROR:')) {
             logContent += `<span style="color: #d9534f; font-weight: bold;">${line}</span><br>`;
@@ -604,7 +619,7 @@
             logContent += line + '<br>';
           }
         }
-        
+
         container.innerHTML = logContent;
       } else {
         container.innerHTML = '<span style="color:#888;">No startup logs available</span>';
@@ -615,23 +630,25 @@
         container.scrollTop = container.scrollHeight;
       }
     } catch (err) {
-      console.error("Failed to fetch startup logs:", err);
-      document.getElementById("startup-log-container").innerHTML = '<span style="color:#888;">Failed to load startup logs</span>';
+      console.error('Failed to fetch startup logs:', err);
+      document.getElementById('startup-log-container').innerHTML =
+        '<span style="color:#888;">Failed to load startup logs</span>';
     }
   }
 
   async function updateLogs() {
     // Add dev mode parameter if active
-    const url = isDevMode ? "/api/logs?env=development" : "/api/logs";
+    const url = isDevMode ? '/api/logs?env=development' : '/api/logs';
     const res = await fetch(url);
     const data = await res.json();
-    const container = document.getElementById("log-container");
+    const container = document.getElementById('log-container');
 
     // Check if user is scrolled to bottom (within 50px threshold)
-    const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
+    const isScrolledToBottom =
+      container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
 
     // Get current server state and version
-    const statsRes = await fetch(isDevMode ? "/api/stats?env=development" : "/api/stats");
+    const statsRes = await fetch(isDevMode ? '/api/stats?env=development' : '/api/stats');
     const statsData = await statsRes.json();
     const currentState = statsData.state;
     const currentGameVersion = statsData.version?.game_version;
@@ -640,12 +657,16 @@
     // Determine what kind of separator to show
     let separatorType = null;
     let separatorMessage = '';
-    
+
     if (previousServerState !== null && previousServerState !== currentState) {
       // Server went from not running to running
-      if (previousServerState !== "running" && currentState === "running") {
+      if (previousServerState !== 'running' && currentState === 'running') {
         // Check if version changed (update/restart with new version)
-        if (previousGameVersion && currentGameVersion && previousGameVersion !== currentGameVersion) {
+        if (
+          previousGameVersion &&
+          currentGameVersion &&
+          previousGameVersion !== currentGameVersion
+        ) {
           separatorType = 'version-change';
           separatorMessage = `Server started with NEW VERSION: ${currentGameVersion} (Build: ${currentBuildId})`;
         } else if (previousBuildId && currentBuildId && previousBuildId !== currentBuildId) {
@@ -658,13 +679,13 @@
         logSeparatorAdded = false;
       }
       // Server went from running to not running
-      else if (previousServerState === "running" && currentState !== "running") {
+      else if (previousServerState === 'running' && currentState !== 'running') {
         separatorType = 'stopped';
         separatorMessage = `Server stopped`;
         logSeparatorAdded = false;
       }
     }
-    
+
     // Update tracking variables
     previousServerState = currentState;
     if (currentGameVersion) previousGameVersion = currentGameVersion;
@@ -672,13 +693,13 @@
 
     // Build log content
     let logContent = '';
-    
+
     // Add separator if needed and not already added
     if (separatorType && !logSeparatorAdded) {
       const timestamp = new Date().toLocaleString();
       let separatorColor = '#c9a227';
       let icon = '⚔';
-      
+
       if (separatorType === 'version-change') {
         separatorColor = '#4f8f63';
         icon = '🔄';
@@ -692,7 +713,7 @@
         separatorColor = '#e6c65c';
         icon = '🔃';
       }
-      
+
       logContent = `<div style="border-top: 2px solid ${separatorColor}; margin: 10px 0; padding-top: 10px;">
         <span style="color: ${separatorColor}; font-weight: bold;">═══════════════════════════════════════════════════════</span><br>
         <span style="color: ${separatorColor}; font-weight: bold;">${icon} ${separatorMessage}</span><br>
@@ -702,10 +723,10 @@
       logSeparatorAdded = true;
     }
 
-    if (data.logs.length === 1 && data.logs[0].startsWith("[INFO]")) {
+    if (data.logs.length === 1 && data.logs[0].startsWith('[INFO]')) {
       logContent += `<span style="color:#e6c65c;">${data.logs[0]}</span>`;
     } else {
-      logContent += data.logs.join("<br>");
+      logContent += data.logs.join('<br>');
     }
 
     container.innerHTML = logContent;
@@ -722,9 +743,9 @@
   startPolling();
   setInterval(updateLogs, 5000);
   setInterval(updateStartupLogs, 5000);
-  
+
   // Set initial button states from server-side render
-  const initialState = "{{ server_state }}";
+  const initialState = '{{ server_state }}';
   if (initialState) {
     updateButtonStates(initialState);
   }
@@ -737,7 +758,6 @@
 </script>
 
 <script>
-
   // =====================
   // CPU CHART
   // =====================
@@ -754,25 +774,24 @@
           data: [],
           borderColor: '#e6c65c',
           backgroundColor: 'rgba(230,198,92,0.25)',
-          tension: 0.3
+          tension: 0.3,
         },
         {
           label: 'Server CPU %',
           data: [],
           borderColor: '#4f8f63',
           backgroundColor: 'rgba(79,143,99,0.3)',
-          tension: 0.3
-        }
-      ]
+          tension: 0.3,
+        },
+      ],
     },
     options: {
       responsive: true,
       scales: {
-        y: { beginAtZero: true }
-      }
-    }
+        y: { beginAtZero: true },
+      },
+    },
   });
-
 
   // =====================
   // RAM CHART
@@ -790,25 +809,24 @@
           data: [],
           borderColor: '#e6c65c',
           backgroundColor: 'rgba(230,198,92,0.25)',
-          tension: 0.3
+          tension: 0.3,
         },
         {
           label: 'Server RAM (GB)',
           data: [],
           borderColor: '#4f8f63',
           backgroundColor: 'rgba(79,143,99,0.3)',
-          tension: 0.3
-        }
-      ]
+          tension: 0.3,
+        },
+      ],
     },
     options: {
       responsive: true,
       scales: {
-        y: { beginAtZero: true }
-      }
-    }
+        y: { beginAtZero: true },
+      },
+    },
   });
-
 
   // =====================
   // LOAD HISTORY (30 MINUTES)
@@ -816,21 +834,20 @@
 
   async function loadHistory() {
     try {
-      const res = await fetch("/api/history");
+      const res = await fetch('/api/history');
       const data = await res.json();
 
-      cpuChart.data.labels = data.map(d => d.timestamp);
-      cpuChart.data.datasets[0].data = data.map(d => d.system_cpu);
-      cpuChart.data.datasets[1].data = data.map(d => d.icarus_cpu);
+      cpuChart.data.labels = data.map((d) => d.timestamp);
+      cpuChart.data.datasets[0].data = data.map((d) => d.system_cpu);
+      cpuChart.data.datasets[1].data = data.map((d) => d.icarus_cpu);
       cpuChart.update();
 
-      ramChart.data.labels = data.map(d => d.timestamp);
-      ramChart.data.datasets[0].data = data.map(d => d.system_ram);
-      ramChart.data.datasets[1].data = data.map(d => d.icarus_ram);
+      ramChart.data.labels = data.map((d) => d.timestamp);
+      ramChart.data.datasets[0].data = data.map((d) => d.system_ram);
+      ramChart.data.datasets[1].data = data.map((d) => d.icarus_ram);
       ramChart.update();
-
     } catch (err) {
-      console.error("History load failed:", err);
+      console.error('History load failed:', err);
     }
   }
 
@@ -839,15 +856,14 @@
     if (lastUptime > 0) {
       lastUptime++;
 
-      const uptimeEl = document.getElementById("uptime-stat");
+      const uptimeEl = document.getElementById('uptime-stat');
       if (uptimeEl) {
-        uptimeEl.innerText = "Uptime: " + formatUptime(lastUptime);
+        uptimeEl.innerText = 'Uptime: ' + formatUptime(lastUptime);
       }
     }
   }, 1000);
   loadHistory();
   setInterval(loadHistory, 30000);
-
 </script>
 
 {% endblock %}

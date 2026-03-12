@@ -2,7 +2,7 @@
 # Improved Icarus server startup script with better error handling
 
 SESSION="icarus"
-GAME_DIR="/home/vertebra/games/icarus"
+GAME_DIR="/srv/games/icarus"
 LOG_FILE="$GAME_DIR/startup.log"
 
 # Function to log messages
@@ -92,8 +92,8 @@ export WINEPREFIX="$HOME/.wine"  # Ensure consistent Wine prefix
 WRAPPER_SCRIPT="$GAME_DIR/.server_wrapper.sh"
 cat > "$WRAPPER_SCRIPT" << 'WRAPPER_EOF'
 #!/bin/bash
-LOG_FILE="/home/vertebra/games/icarus/startup.log"
-cd /home/vertebra/games/icarus
+LOG_FILE="/srv/games/icarus/startup.log"
+cd /srv/games/icarus
 export WINEPREFIX=$HOME/.wine
 
 # Log Wine version and configuration

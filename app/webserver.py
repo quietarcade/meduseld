@@ -1,4 +1,4 @@
-from flask import Flask, g, render_template, request, jsonify, abort, make_response, redirect
+from flask import Flask, g, render_template, request, jsonify, abort, make_response, redirect, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 import subprocess
 import psutil
@@ -9,10 +9,15 @@ import requests
 import logging
 import signal
 import sys
+import json
 from collections import deque
 from functools import wraps
 from datetime import datetime
 import socket
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 
 # Get the directory where this script is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -36,7 +41,7 @@ except ImportError as e:
 
     IS_DEV = False
     IS_PRODUCTION = True
-    SERVER_DIR = "/home/vertebra/games/icarus"
+    SERVER_DIR = "/srv/games/icarus"
     LAUNCH_EXE = f"{SERVER_DIR}/start.sh"
     LAUNCH_SCRIPT = f"{SERVER_DIR}/start.sh"
     PROCESS_NAME = "IcarusServer.exe"
@@ -1656,6 +1661,226 @@ def download_backup():
     except Exception as e:
         logger.error(f"Error downloading backup: {e}")
         return make_response(f"Error downloading backup: {e}", 500)
+
+
+# ================= GOOGLE DRIVE BACKUP =================
+
+def get_google_credentials():
+    """Load Google OAuth credentials from token file"""
+    if not os.path.exists(GOOGLE_TOKEN_FILE):
+        return None
+    
+    try:
+        with open(GOOGLE_TOKEN_FILE, 'r') as f:
+            token_data = json.load(f)
+        
+        credentials = Credentials(
+            token=token_data.get('token'),
+            refresh_token=token_data.get('refresh_token'),
+            token_uri='https://oauth2.googleapis.com/token',
+            client_id=GOOGLE_CLIENT_ID,
+            client_secret=GOOGLE_CLIENT_SECRET,
+            scopes=['https://www.googleapis.com/auth/drive.file']
+        )
+        
+        return credentials
+    except Exception as e:
+        logger.error(f"Error loading Google credentials: {e}")
+        return None
+
+
+def save_google_credentials(credentials):
+    """Save Google OAuth credentials to token file"""
+    try:
+        token_data = {
+            'token': credentials.token,
+            'refresh_token': credentials.refresh_token,
+            'token_uri': credentials.token_uri,
+            'client_id': credentials.client_id,
+            'client_secret': credentials.client_secret,
+            'scopes': credentials.scopes
+        }
+        
+        with open(GOOGLE_TOKEN_FILE, 'w') as f:
+            json.dump(token_data, f)
+        
+        # Secure the token file
+        os.chmod(GOOGLE_TOKEN_FILE, 0o600)
+        logger.info("Google credentials saved successfully")
+    except Exception as e:
+        logger.error(f"Error saving Google credentials: {e}")
+
+
+@app.route("/backup-to-cloud")
+def backup_to_cloud():
+    """Initiate Google Drive backup - starts OAuth flow if needed"""
+    log_activity("BACKUP to cloud initiated")
+    
+    # Check if we have valid credentials
+    credentials = get_google_credentials()
+    
+    if credentials and credentials.valid:
+        # We have valid credentials, proceed with backup
+        return redirect(url_for('upload_to_drive'))
+    elif credentials and credentials.expired and credentials.refresh_token:
+        # Try to refresh the token
+        try:
+            from google.auth.transport.requests import Request
+            credentials.refresh(Request())
+            save_google_credentials(credentials)
+            return redirect(url_for('upload_to_drive'))
+        except Exception as e:
+            logger.error(f"Error refreshing Google token: {e}")
+            # Fall through to OAuth flow
+    
+    # Need to authenticate - start OAuth flow
+    return redirect(url_for('google_oauth'))
+
+
+@app.route("/google-oauth")
+def google_oauth():
+    """Start Google OAuth flow"""
+    try:
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": GOOGLE_CLIENT_ID,
+                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [GOOGLE_REDIRECT_URI]
+                }
+            },
+            scopes=['https://www.googleapis.com/auth/drive.file']
+        )
+        
+        flow.redirect_uri = GOOGLE_REDIRECT_URI
+        
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true',
+            prompt='consent'
+        )
+        
+        session['oauth_state'] = state
+        return redirect(authorization_url)
+    except Exception as e:
+        logger.error(f"Error starting OAuth flow: {e}")
+        return make_response(f"Error starting OAuth: {e}", 500)
+
+
+@app.route("/oauth2callback")
+def oauth2callback():
+    """Handle OAuth callback from Google"""
+    try:
+        state = session.get('oauth_state')
+        
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": GOOGLE_CLIENT_ID,
+                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [GOOGLE_REDIRECT_URI]
+                }
+            },
+            scopes=['https://www.googleapis.com/auth/drive.file'],
+            state=state
+        )
+        
+        flow.redirect_uri = GOOGLE_REDIRECT_URI
+        flow.fetch_token(authorization_response=request.url)
+        
+        credentials = flow.credentials
+        save_google_credentials(credentials)
+        
+        log_activity("GOOGLE OAuth completed")
+        
+        # Now upload the backup
+        return redirect(url_for('upload_to_drive'))
+    except Exception as e:
+        logger.error(f"Error in OAuth callback: {e}")
+        return make_response(f"Error completing OAuth: {e}", 500)
+
+
+@app.route("/upload-to-drive")
+def upload_to_drive():
+    """Upload backup file to Google Drive"""
+    log_activity("UPLOAD backup to Google Drive")
+    
+    dev_mode_active = is_dev_mode()
+    
+    if dev_mode_active:
+        return make_response("Dev mode - no backup available", 404)
+    
+    backup_file = (
+        f"{SERVER_DIR}/Icarus/Saved/PlayerData/DedicatedServer/Prospects/Expedition 404.json"
+    )
+    
+    if not os.path.exists(backup_file):
+        logger.warning(f"Backup file not found: {backup_file}")
+        return make_response("Backup file not found", 404)
+    
+    try:
+        credentials = get_google_credentials()
+        
+        if not credentials or not credentials.valid:
+            return make_response("Not authenticated with Google Drive", 401)
+        
+        # Build Drive API service
+        service = build('drive', 'v3', credentials=credentials)
+        
+        # Prepare file metadata
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        file_name = f"Expedition_404_backup_{timestamp}.json"
+        
+        file_metadata = {
+            'name': file_name,
+            'mimeType': 'application/json'
+        }
+        
+        # Add to specific folder if configured
+        if GOOGLE_DRIVE_FOLDER_ID:
+            file_metadata['parents'] = [GOOGLE_DRIVE_FOLDER_ID]
+        
+        # Upload file
+        media = MediaFileUpload(backup_file, mimetype='application/json', resumable=True)
+        
+        file = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id,name,webViewLink'
+        ).execute()
+        
+        logger.info(f"Backup uploaded to Google Drive: {file.get('name')} (ID: {file.get('id')})")
+        log_activity(f"BACKUP uploaded to Drive: {file.get('name')}")
+        
+        # Return success page or redirect
+        return f"""
+        <html>
+        <head>
+            <title>Backup Successful</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                .success {{ color: #28a745; font-size: 24px; margin-bottom: 20px; }}
+                .details {{ color: #666; margin-bottom: 30px; }}
+                a {{ color: #007bff; text-decoration: none; }}
+            </style>
+        </head>
+        <body>
+            <div class="success">✓ Backup Uploaded Successfully!</div>
+            <div class="details">
+                <p><strong>File:</strong> {file.get('name')}</p>
+                <p><a href="{file.get('webViewLink')}" target="_blank">View in Google Drive</a></p>
+            </div>
+            <a href="/">← Back to Control Panel</a>
+        </body>
+        </html>
+        """
+    except Exception as e:
+        logger.error(f"Error uploading to Google Drive: {e}")
+        return make_response(f"Error uploading to Google Drive: {e}", 500)
 
 
 @app.route("/api/history")

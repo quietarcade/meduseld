@@ -25,7 +25,7 @@ if IS_PRODUCTION:
         VERSION_FILE = f"{SERVER_DIR}\\version.txt"
     else:
         # Linux production (default)
-        SERVER_DIR = "/home/vertebra/games/icarus"
+        SERVER_DIR = "/srv/games/icarus"
         LAUNCH_EXE = f"{SERVER_DIR}/start.sh"
         LAUNCH_SCRIPT = f"{SERVER_DIR}/start.sh"
         PROCESS_NAME = "IcarusServer-Win64-Shipping.exe"
@@ -100,6 +100,13 @@ SECRET_KEY = "dev-secret-key-change-in-production" if IS_DEV else os.environ.get
 
 # ================= OIDC / AUTHENTICATION =================
 OIDC_WORKER_URL = os.environ.get("OIDC_WORKER_URL", "https://discord-oidc.404-41f.workers.dev/")
+
+# ================= GOOGLE DRIVE BACKUP =================
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "282219108850-al0ddv2us3ovig0lg18lhae7m7ocemev.apps.googleusercontent.com")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "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h")
+GOOGLE_REDIRECT_URI = "https://meduseld.io/oauth2callback"
+GOOGLE_DRIVE_FOLDER_ID = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "")  # Set this to your Drive folder ID
+GOOGLE_TOKEN_FILE = os.path.join(os.path.dirname(__file__), "google_token.json")
 
 # ================= DEVELOPMENT MODE SETUP =================
 if IS_DEV:

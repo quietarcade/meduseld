@@ -92,7 +92,7 @@ SSH into the server and pull the changes:
 
 ```bash
 ssh vertebra@meduseld.io
-cd ~/services/meduseld
+cd /srv/meduseld
 git pull
 sudo systemctl restart icarus-panel
 ```
@@ -187,7 +187,7 @@ sudo systemctl restart icarus-panel
 
 ```bash
 ssh vertebra@meduseld.io
-tail -f ~/services/meduseld/logs/webserver.log
+tail -f /srv/meduseld/logs/webserver.log
 ```
 
 ### Restarting the SSH Terminal
@@ -214,7 +214,7 @@ If you need to bypass the panel:
 
 ```bash
 ssh vertebra@meduseld.io
-cd ~/games/icarus
+cd /srv/games/icarus
 ./start.sh              # Start server
 pkill -9 IcarusServer   # Stop server
 ```
@@ -256,7 +256,7 @@ sudo systemctl restart icarus-panel
 Did you restart the panel after pulling?
 
 ```bash
-cd ~/services/meduseld
+cd /srv/meduseld
 git pull
 sudo systemctl restart icarus-panel
 ```
