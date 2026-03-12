@@ -29,6 +29,17 @@ app = Flask(
 )
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
+# Add CORS headers for API endpoints
+@app.after_request
+def add_cors_headers(response):
+    # Allow system.meduseld.io and menu.meduseld.io to access API
+    origin = request.headers.get('Origin')
+    if origin and 'meduseld.io' in origin:
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response
+
 # ================= CONFIG =================
 
 try:
@@ -1945,6 +1956,30 @@ def upload_to_drive():
     except Exception as e:
         logger.error(f"Error uploading to Google Drive: {e}")
         return make_response(f"Error uploading to Google Drive: {e}", 500)
+
+@app.route("/api/server-logs")
+def api_server_logs():
+    """Return recent server logs for display on menu page"""
+    try:
+        lines = int(request.args.get('lines', 50))
+        lines = min(lines, 200)  # Cap at 200 lines
+
+        if not os.path.exists(LOG_FILE_PATH):
+            return jsonify({"logs": [], "error": "Log file not found"})
+
+        # Read last N lines from log file
+        with open(LOG_FILE_PATH, 'r') as f:
+            all_lines = f.readlines()
+            recent_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
+
+        # Strip newlines and return
+        logs = [line.rstrip('\n') for line in recent_lines]
+
+        return jsonify({"logs": logs, "count": len(logs)})
+    except Exception as e:
+        logger.error(f"Error reading server logs: {e}")
+        return jsonify({"logs": [], "error": str(e)}), 500
+
 
 
 @app.route("/api/history")
