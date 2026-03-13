@@ -1,4 +1,15 @@
-from flask import Flask, g, render_template, request, jsonify, abort, make_response, redirect, session, url_for
+from flask import (
+    Flask,
+    g,
+    render_template,
+    request,
+    jsonify,
+    abort,
+    make_response,
+    redirect,
+    session,
+    url_for,
+)
 from werkzeug.middleware.proxy_fix import ProxyFix
 import subprocess
 import psutil
@@ -29,16 +40,18 @@ app = Flask(
 )
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
+
 # Add CORS headers for API endpoints
 @app.after_request
 def add_cors_headers(response):
     # Allow system.meduseld.io and services.meduseld.io to access API
-    origin = request.headers.get('Origin')
-    if origin and 'meduseld.io' in origin:
-        response.headers['Access-Control-Allow-Origin'] = origin
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    origin = request.headers.get("Origin")
+    if origin and "meduseld.io" in origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return response
+
 
 # ================= CONFIG =================
 
@@ -509,20 +522,20 @@ def get_cpu_temperature():
                         if entries:
                             # Return the first temperature reading
                             return round(entries[0].current, 1)
-        
+
         # Fallback: read from /sys/class/thermal (Linux)
         thermal_zones = [
             "/sys/class/thermal/thermal_zone0/temp",
             "/sys/class/thermal/thermal_zone1/temp",
         ]
-        
+
         for zone in thermal_zones:
             if os.path.exists(zone):
                 with open(zone, "r") as f:
                     temp = int(f.read().strip())
                     # Temperature is in millidegrees, convert to Celsius
                     return round(temp / 1000.0, 1)
-        
+
         return None
     except Exception as e:
         logger.debug(f"Could not read CPU temperature: {e}")
@@ -1286,7 +1299,46 @@ def restart():
     def restart_sequence():
         global last_update_status, last_update_time, last_update_output, current_build_id
 
-        # Run update script (it handles killing the server and updating)
+        # First, forcefully kill any existing server processes
+        logger.info("Killing any existing server processes before restart")
+        kill_server()
+
+        # Wait for processes to fully terminate
+        max_wait = 20
+        for i in range(max_wait):
+            time.sleep(1)
+            if not is_running():
+                logger.info(f"Server processes terminated after {i+1} seconds")
+                break
+            if i == max_wait - 1:
+                logger.warning("Server still running after initial kill, forcing again")
+                kill_server()
+
+        # Extra aggressive cleanup - kill any Wine processes running the server
+        try:
+            subprocess.run(
+                ["pkill", "-9", "-f", "IcarusServer-Win64-Shipping.exe"],
+                capture_output=True,
+                timeout=5,
+            )
+            subprocess.run(
+                ["pkill", "-9", "-f", "IcarusServer.exe"], capture_output=True, timeout=5
+            )
+            # Also kill any tmux sessions that might be holding the process
+            subprocess.run(["tmux", "kill-session", "-t", "icarus"], capture_output=True, timeout=5)
+        except Exception as e:
+            logger.warning(f"Error during aggressive cleanup: {e}")
+
+        # Final wait to ensure everything is dead
+        time.sleep(3)
+
+        # Verify nothing is running
+        if is_running():
+            logger.error("WARNING: Server process still detected after aggressive kill")
+        else:
+            logger.info("All server processes confirmed terminated")
+
+        # Run update script (it handles updating)
         if os.path.exists(UPDATE_SCRIPT):
             try:
                 logger.info("Running update script")
@@ -1324,19 +1376,10 @@ def restart():
                 last_update_time = time.time()
                 logger.error(f"Update script error: {e}")
         else:
-            # If update script doesn't exist, manually kill the server
+            # If update script doesn't exist, just note it
             last_update_status = "script not found"
             last_update_time = time.time()
-            logger.warning("Update script not found, manually killing server")
-
-            kill_server()
-            for _ in range(15):
-                time.sleep(1)
-                if not is_running():
-                    break
-            if is_running():
-                kill_server()
-                time.sleep(2)
+            logger.warning("Update script not found, skipping update")
 
         # Ensure server is fully stopped before launching
         time.sleep(2)
@@ -1721,24 +1764,25 @@ def download_backup():
 
 # ================= GOOGLE DRIVE BACKUP =================
 
+
 def get_google_credentials():
     """Load Google OAuth credentials from token file"""
     if not os.path.exists(GOOGLE_TOKEN_FILE):
         return None
-    
+
     try:
-        with open(GOOGLE_TOKEN_FILE, 'r') as f:
+        with open(GOOGLE_TOKEN_FILE, "r") as f:
             token_data = json.load(f)
-        
+
         credentials = Credentials(
-            token=token_data.get('token'),
-            refresh_token=token_data.get('refresh_token'),
-            token_uri='https://oauth2.googleapis.com/token',
+            token=token_data.get("token"),
+            refresh_token=token_data.get("refresh_token"),
+            token_uri="https://oauth2.googleapis.com/token",
             client_id=GOOGLE_CLIENT_ID,
             client_secret=GOOGLE_CLIENT_SECRET,
-            scopes=['https://www.googleapis.com/auth/drive.file']
+            scopes=["https://www.googleapis.com/auth/drive.file"],
         )
-        
+
         return credentials
     except Exception as e:
         logger.error(f"Error loading Google credentials: {e}")
@@ -1749,17 +1793,17 @@ def save_google_credentials(credentials):
     """Save Google OAuth credentials to token file"""
     try:
         token_data = {
-            'token': credentials.token,
-            'refresh_token': credentials.refresh_token,
-            'token_uri': credentials.token_uri,
-            'client_id': credentials.client_id,
-            'client_secret': credentials.client_secret,
-            'scopes': credentials.scopes
+            "token": credentials.token,
+            "refresh_token": credentials.refresh_token,
+            "token_uri": credentials.token_uri,
+            "client_id": credentials.client_id,
+            "client_secret": credentials.client_secret,
+            "scopes": credentials.scopes,
         }
-        
-        with open(GOOGLE_TOKEN_FILE, 'w') as f:
+
+        with open(GOOGLE_TOKEN_FILE, "w") as f:
             json.dump(token_data, f)
-        
+
         # Secure the token file
         os.chmod(GOOGLE_TOKEN_FILE, 0o600)
         logger.info("Google credentials saved successfully")
@@ -1771,26 +1815,27 @@ def save_google_credentials(credentials):
 def backup_to_cloud():
     """Initiate Google Drive backup - starts OAuth flow if needed"""
     log_activity("BACKUP to cloud initiated")
-    
+
     # Check if we have valid credentials
     credentials = get_google_credentials()
-    
+
     if credentials and credentials.valid:
         # We have valid credentials, proceed with backup
-        return redirect(url_for('upload_to_drive'))
+        return redirect(url_for("upload_to_drive"))
     elif credentials and credentials.expired and credentials.refresh_token:
         # Try to refresh the token
         try:
             from google.auth.transport.requests import Request
+
             credentials.refresh(Request())
             save_google_credentials(credentials)
-            return redirect(url_for('upload_to_drive'))
+            return redirect(url_for("upload_to_drive"))
         except Exception as e:
             logger.error(f"Error refreshing Google token: {e}")
             # Fall through to OAuth flow
-    
+
     # Need to authenticate - start OAuth flow
-    return redirect(url_for('google_oauth'))
+    return redirect(url_for("google_oauth"))
 
 
 @app.route("/google-oauth")
@@ -1804,21 +1849,19 @@ def google_oauth():
                     "client_secret": GOOGLE_CLIENT_SECRET,
                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
-                    "redirect_uris": [GOOGLE_REDIRECT_URI]
+                    "redirect_uris": [GOOGLE_REDIRECT_URI],
                 }
             },
-            scopes=['https://www.googleapis.com/auth/drive.file']
+            scopes=["https://www.googleapis.com/auth/drive.file"],
         )
-        
+
         flow.redirect_uri = GOOGLE_REDIRECT_URI
-        
+
         authorization_url, state = flow.authorization_url(
-            access_type='offline',
-            include_granted_scopes='true',
-            prompt='consent'
+            access_type="offline", include_granted_scopes="true", prompt="consent"
         )
-        
-        session['oauth_state'] = state
+
+        session["oauth_state"] = state
         return redirect(authorization_url)
     except Exception as e:
         logger.error(f"Error starting OAuth flow: {e}")
@@ -1829,8 +1872,8 @@ def google_oauth():
 def oauth2callback():
     """Handle OAuth callback from Google"""
     try:
-        state = session.get('oauth_state')
-        
+        state = session.get("oauth_state")
+
         flow = Flow.from_client_config(
             {
                 "web": {
@@ -1838,23 +1881,23 @@ def oauth2callback():
                     "client_secret": GOOGLE_CLIENT_SECRET,
                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
-                    "redirect_uris": [GOOGLE_REDIRECT_URI]
+                    "redirect_uris": [GOOGLE_REDIRECT_URI],
                 }
             },
-            scopes=['https://www.googleapis.com/auth/drive.file'],
-            state=state
+            scopes=["https://www.googleapis.com/auth/drive.file"],
+            state=state,
         )
-        
+
         flow.redirect_uri = GOOGLE_REDIRECT_URI
         flow.fetch_token(authorization_response=request.url)
-        
+
         credentials = flow.credentials
         save_google_credentials(credentials)
-        
+
         log_activity("GOOGLE OAuth completed")
-        
+
         # Now upload the backup
-        return redirect(url_for('upload_to_drive'))
+        return redirect(url_for("upload_to_drive"))
     except Exception as e:
         logger.error(f"Error in OAuth callback: {e}")
         return make_response(f"Error completing OAuth: {e}", 500)
@@ -1864,73 +1907,75 @@ def oauth2callback():
 def upload_to_drive():
     """Upload backup file to Google Drive"""
     log_activity("UPLOAD backup to Google Drive")
-    
+
     dev_mode_active = is_dev_mode()
-    
+
     if dev_mode_active:
         return make_response("Dev mode - no backup available", 404)
-    
+
     backup_file = (
         f"{SERVER_DIR}/Icarus/Saved/PlayerData/DedicatedServer/Prospects/Expedition 404.json"
     )
-    
+
     if not os.path.exists(backup_file):
         logger.warning(f"Backup file not found: {backup_file}")
         return make_response("Backup file not found", 404)
-    
+
     try:
         credentials = get_google_credentials()
-        
+
         if not credentials or not credentials.valid:
             return make_response("Not authenticated with Google Drive", 401)
-        
+
         # Build Drive API service
-        service = build('drive', 'v3', credentials=credentials)
-        
+        service = build("drive", "v3", credentials=credentials)
+
         # Find or create the game subfolder
         game_folder_id = None
-        
+
         # Search for existing "icarus" folder
         query = f"name='{GOOGLE_DRIVE_GAME_FOLDER_NAME}' and '{GOOGLE_DRIVE_PARENT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
-        results = service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
-        folders = results.get('files', [])
-        
+        results = service.files().list(q=query, spaces="drive", fields="files(id, name)").execute()
+        folders = results.get("files", [])
+
         if folders:
-            game_folder_id = folders[0]['id']
-            logger.info(f"Found existing '{GOOGLE_DRIVE_GAME_FOLDER_NAME}' folder: {game_folder_id}")
+            game_folder_id = folders[0]["id"]
+            logger.info(
+                f"Found existing '{GOOGLE_DRIVE_GAME_FOLDER_NAME}' folder: {game_folder_id}"
+            )
         else:
             # Create the subfolder
             folder_metadata = {
-                'name': GOOGLE_DRIVE_GAME_FOLDER_NAME,
-                'mimeType': 'application/vnd.google-apps.folder',
-                'parents': [GOOGLE_DRIVE_PARENT_FOLDER_ID]
+                "name": GOOGLE_DRIVE_GAME_FOLDER_NAME,
+                "mimeType": "application/vnd.google-apps.folder",
+                "parents": [GOOGLE_DRIVE_PARENT_FOLDER_ID],
             }
-            folder = service.files().create(body=folder_metadata, fields='id').execute()
-            game_folder_id = folder.get('id')
+            folder = service.files().create(body=folder_metadata, fields="id").execute()
+            game_folder_id = folder.get("id")
             logger.info(f"Created '{GOOGLE_DRIVE_GAME_FOLDER_NAME}' folder: {game_folder_id}")
-        
+
         # Prepare file metadata
         timestamp = time.strftime("%Y%m%d-%H%M%S")
         file_name = f"Expedition_404_backup_{timestamp}.json"
-        
+
         file_metadata = {
-            'name': file_name,
-            'mimeType': 'application/json',
-            'parents': [game_folder_id]
+            "name": file_name,
+            "mimeType": "application/json",
+            "parents": [game_folder_id],
         }
-        
+
         # Upload file
-        media = MediaFileUpload(backup_file, mimetype='application/json', resumable=True)
-        
-        file = service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id,name,webViewLink'
-        ).execute()
-        
+        media = MediaFileUpload(backup_file, mimetype="application/json", resumable=True)
+
+        file = (
+            service.files()
+            .create(body=file_metadata, media_body=media, fields="id,name,webViewLink")
+            .execute()
+        )
+
         logger.info(f"Backup uploaded to Google Drive: {file.get('name')} (ID: {file.get('id')})")
         log_activity(f"BACKUP uploaded to Drive: {file.get('name')}")
-        
+
         # Return success page or redirect
         return f"""
         <html>
@@ -1958,29 +2003,29 @@ def upload_to_drive():
         logger.error(f"Error uploading to Google Drive: {e}")
         return make_response(f"Error uploading to Google Drive: {e}", 500)
 
+
 @app.route("/api/server-logs")
 def api_server_logs():
     """Return recent server logs for display on service page"""
     try:
-        lines = int(request.args.get('lines', 50))
+        lines = int(request.args.get("lines", 50))
         lines = min(lines, 200)  # Cap at 200 lines
 
         if not os.path.exists(SYSTEM_LOG_FILE_PATH):
             return jsonify({"logs": [], "error": "Log file not found"})
 
         # Read last N lines from log file
-        with open(SYSTEM_LOG_FILE_PATH, 'r') as f:
+        with open(SYSTEM_LOG_FILE_PATH, "r") as f:
             all_lines = f.readlines()
             recent_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
 
         # Strip newlines and return
-        logs = [line.rstrip('\n') for line in recent_lines]
+        logs = [line.rstrip("\n") for line in recent_lines]
 
         return jsonify({"logs": logs, "count": len(logs)})
     except Exception as e:
         logger.error(f"Error reading server logs: {e}")
         return jsonify({"logs": [], "error": str(e)}), 500
-
 
 
 @app.route("/api/history")
