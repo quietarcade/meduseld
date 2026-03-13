@@ -1,5 +1,6 @@
 ### Kiro
-.kiro/
+.kiro/*
+!.kiro/steering/
 
 ### VisualStudioCode template
 .vscode/*
