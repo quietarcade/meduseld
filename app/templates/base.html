@@ -188,14 +188,6 @@
         box-shadow: 0 0 20px rgba(201, 162, 39, 0.35);
       }
 
-      /* Disabled state */
-      .control-card.disabled {
-        opacity: 0.35;
-        pointer-events: none;
-        cursor: not-allowed;
-        box-shadow: none;
-      }
-
       /* ACTIVE STATES */
       .control-start {
         background: #1f4d2b !important;
@@ -217,10 +209,11 @@
         /* royal purple */
       }
 
-      /* Disabled */
       .control-card.disabled {
         opacity: 0.35;
         pointer-events: none;
+        cursor: not-allowed !important;
+        box-shadow: none;
         filter: grayscale(50%);
       }
 
