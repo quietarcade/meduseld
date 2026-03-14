@@ -1,7 +1,3 @@
-### Kiro
-.kiro/*
-!.kiro/steering/
-
 ### VisualStudioCode template
 .vscode/*
 !.vscode/settings.json
