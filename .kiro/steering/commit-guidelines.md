@@ -47,13 +47,13 @@ When making changes to this repository, you MUST use the following commit format
 ## Examples
 
 ```bash
-feat(panel): add player count display
-fix(auth): resolve redirect loop on macOS browsers
-style(footer): update version to 0.4.0-alpha
-refactor(routes): clean up catch-all route logic
-perf(monitoring): reduce stats collection interval
-docs(readme): update deployment instructions
-chore(deps): update Flask to 3.0.0
+feat(panel): Add player count display
+fix(auth): Resolve redirect loop on macOS browsers
+style(footer): Update version to 0.4.0-alpha
+refactor(routes): Clean up catch-all route logic
+perf(monitoring): Reduce stats collection interval
+docs(readme): Update deployment instructions
+chore(deps): Update Flask to 3.0.0
 ```
 
 ## Rules
