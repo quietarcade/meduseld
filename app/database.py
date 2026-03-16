@@ -13,5 +13,3 @@ def init_db(app):
     with app.app_context():
         # Import models so they're registered with SQLAlchemy
         import models  # noqa: F401
-
-        db.create_all()
