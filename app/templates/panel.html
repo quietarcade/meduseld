@@ -1038,4 +1038,12 @@
   })();
 </script>
 
+<!-- Auth sync: fetches real Discord data via Cloudflare Access identity endpoint and syncs to DB -->
+<script src="https://meduseld.io/static/auth.js"></script>
+<script>
+  if (typeof MeduseldAuth !== 'undefined') {
+    MeduseldAuth.syncUser();
+  }
+</script>
+
 {% endblock %}
