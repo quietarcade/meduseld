@@ -419,55 +419,29 @@ def authenticate_request():
         # validated the token before forwarding the request to our origin.
         payload = jwt.decode(cf_token, options={"verify_signature": False})
 
-        # Cloudflare Access rewrites the OIDC claims into its own format.
-        # The original Discord user info from the OIDC id_token is available
-        # via the /cdn-cgi/access/get-identity endpoint using the user's cookie.
-        discord_id = None
-        username = None
-        display_name = None
-        avatar_hash = None
+        # Log the full JWT payload so we can see what Cloudflare sends
+        logger.info(f"CF Access JWT claims: {json.dumps(payload, default=str)}")
+
+        # Extract what we can from the Cloudflare Access JWT
         email = payload.get("email", "")
+        # Cloudflare Access uses its own UUID as 'sub', not the Discord ID
+        cf_user_id = payload.get("sub", "")
 
-        # Try to get the full OIDC identity which includes our custom discord_user claims
-        try:
-            cf_cookie = request.cookies.get("CF_Authorization")
-            if cf_cookie:
-                identity_resp = requests.get(
-                    f"https://{request.host}/cdn-cgi/access/get-identity",
-                    headers={"Cookie": f"CF_Authorization={cf_cookie}"},
-                    timeout=3,
-                )
-                if identity_resp.status_code == 200:
-                    identity = identity_resp.json()
-                    # The OIDC claims from our worker are in the identity
-                    oidc = identity.get("oidc_fields", {})
-                    discord_id = oidc.get("sub") or identity.get("user_uuid")
-                    username = oidc.get("preferred_username", "")
-                    display_name = oidc.get("name", "")
+        # The custom OIDC claims (discord_user) are NOT passed through
+        # in the Cf-Access-Jwt-Assertion header. They're only available
+        # via the /cdn-cgi/access/get-identity endpoint from the browser.
+        # So we use email as the initial identifier, and the client-side
+        # auth.js will call /api/sync-identity with the full Discord data.
 
-                    # Check for discord_user custom claim
-                    discord_user = oidc.get("discord_user", {})
-                    if discord_user:
-                        discord_id = discord_user.get("id", discord_id)
-                        username = discord_user.get("username", username)
-                        display_name = discord_user.get("global_name", display_name)
-                        avatar_hash = discord_user.get("avatar")
+        # Use preferred_username or email-derived username as fallback
+        username = payload.get("preferred_username", "") or (
+            email.split("@")[0] if email else "unknown"
+        )
+        display_name = payload.get("name", "") or username
 
-                    logger.debug(
-                        f"Got identity from Cloudflare Access: {identity.get('email')}, discord_id={discord_id}"
-                    )
-        except Exception as e:
-            logger.debug(f"Could not fetch Cloudflare identity endpoint: {e}")
-
-        # Fallback to JWT claims if identity endpoint didn't work
-        if not discord_id:
-            discord_id = payload.get("sub", "")
-        if not username:
-            username = payload.get("preferred_username", "") or (
-                email.split("@")[0] if email else "unknown"
-            )
-        if not display_name:
-            display_name = payload.get("name", "") or username
+        # For now, use the Cloudflare UUID as discord_id — it will be
+        # updated when the client calls /api/sync-identity with real data
+        discord_id = cf_user_id
 
         if not discord_id:
             logger.warning("JWT decoded but no user identifier found in claims")
@@ -480,7 +454,6 @@ def authenticate_request():
             discord_id=discord_id,
             username=username,
             display_name=display_name,
-            avatar_hash=avatar_hash,
             email=email,
         )
 
@@ -528,6 +501,49 @@ def api_me():
     if not hasattr(g, "user") or g.user is None:
         return jsonify({"authenticated": False}), 200
     return jsonify({"authenticated": True, "user": g.user.to_dict()}), 200
+
+
+@app.route("/api/sync-identity", methods=["POST"])
+def api_sync_identity():
+    """
+    Called by client-side auth.js with Discord user data from the
+    Cloudflare Access /cdn-cgi/access/get-identity endpoint.
+    Updates the user's DB record with real Discord ID, username, and avatar.
+    """
+    data = request.get_json()
+    if not data or not data.get("discord_id"):
+        return jsonify({"error": "Missing discord_id"}), 400
+
+    # We need a session user to know which DB record to update
+    user_data = session.get("user")
+    if not user_data:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    from models import User
+    from database import db
+
+    user = User.query.filter_by(discord_id=str(user_data["discord_id"])).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Update with real Discord data
+    old_discord_id = user.discord_id
+    user.discord_id = str(data["discord_id"])
+    user.username = data.get("username", user.username)
+    user.display_name = data.get("display_name", user.display_name)
+    user.avatar_hash = data.get("avatar_hash", user.avatar_hash)
+
+    try:
+        db.session.commit()
+        session["user"] = user.to_dict()
+        logger.info(
+            f"Synced Discord identity: {old_discord_id} -> {user.discord_id} ({user.username})"
+        )
+        return jsonify({"synced": True, "user": user.to_dict()}), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error syncing identity: {e}")
+        return jsonify({"error": "Sync failed"}), 500
 
 
 # ================= SERVER CONTROL =================
