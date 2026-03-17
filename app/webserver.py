@@ -2861,9 +2861,9 @@ def jellyfin_catch_all(path):
 <style>@keyframes spin{{from{{transform:rotate(0deg)}}to{{transform:rotate(360deg)}}}}</style>
 <script>
 (function() {{
-    var token = "{token}";
-    var userId = "{user_id}";
-    var serverId = "{server_id}";
+    var token = {json.dumps(token)};
+    var userId = {json.dumps(user_id)};
+    var serverId = {json.dumps(server_id)};
     var POLL_INTERVAL = 250;
     var MAX_WAIT = 15000;
     var elapsed = 0;
