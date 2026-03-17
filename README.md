@@ -1,378 +1,166 @@
-# Meduseld - 404 Crew Dedicated Server Control Webapp
+# Meduseld Backend
 
 <div align="center">
   <img src="app/static/meduseldminimal.png" alt="Meduseld" width="150">
 </div>
 
-Hey! This is our web control panel for the Icarus game server. You can start/stop the server, check if it's running, view logs, and even SSH into the server - all from your browser.
+Flask backend for the Meduseld server management platform. Provides the game server control panel, SSH terminal wrapper, health dashboard, and API endpoints for the static site pages.
 
-## What You Can Do
+## Pages
 
-### Control Panel (https://panel.meduseld.io)
+### panel.meduseld.io — Game Server Control Panel
 
-- **Start/Stop/Restart** the Icarus server
-- **Monitor** CPU, RAM, disk usage in real-time
-- **View live logs** from the game server
-- **Check for updates** - it'll tell you if there's a new version
-- **See graphs** of server performance over the last 30 minutes
-- **Force kill** if the server gets stuck
+**File:** `app/templates/panel.html` (extends `base.html`)
 
-### SSH Terminal (https://ssh.meduseld.io)
+Authenticated page for controlling the Icarus dedicated game server. Requires Discord OIDC login via Cloudflare Access.
 
-- **Access the server** directly from your browser
-- No need to install PuTTY or any SSH client
-- Login with your Ubuntu username and password
-- Full terminal access - run any command you want
+- **System status cards** — CPU, RAM, disk, CPU temp, system status (updates every 5s)
+- **Server status card** — state (running/offline/crashed/starting/stopping/restarting), health badge, update badge, uptime, player count, server CPU/RAM
+- **Control buttons** — Start, Stop, Restart, Kill (2x2 grid, enable/disable based on server state)
+- **Game server logs** — live log viewer with state transition separators (updates every 5s)
+- **Startup script logs** — color-coded entries with clear button (updates every 5s)
+- **CPU & RAM charts** — Chart.js line graphs with 30 minutes of history (system + server datasets)
+- **Dynamic tab title** — emoji changes based on server state (🟢 running, 🔴 offline, 💥 crashed, etc.)
+- **Development mode** — activated via `?env=development` URL parameter, shows purple badge
+- **Backup dropdown** — download backup or trigger Google Drive upload
+- **Update detection** — checks Steam API for new builds, clickable badge to trigger update
 
-## How to Access
+### ssh.meduseld.io — SSH Terminal Wrapper (Admin Only)
 
-1. Go to https://services.meduseld.io to see all available services
-2. Click on the service you want to access (Control Panel, SSH Terminal, Jellyfin)
-3. Authenticate with Discord via Cloudflare Access
-4. You're in!
+**File:** `app/templates/terminal.html`
 
-Your Discord account needs to be in the allowed server. If you can't get in, ask Kyle to add you.
+Embeds the ttyd web terminal in an iframe with navigation and a help modal. Non-admin users get a 403 and are redirected to the services page.
 
-## Making Changes to the Code
+- **Embedded terminal** — iframe pointing to `terminal.meduseld.io` (ttyd instance)
+- **Navigation bar** — Back to Services, Server Panel buttons
+- **Help button** — floating gold button that opens a Linux Commands Cheat Sheet modal
+- **Cheat sheet sections** — navigation, file operations, disk usage, process management, permissions, server configuration
 
-If you want to modify the panel or fix something:
+### health.meduseld.io — Service Health Dashboard
 
-### 1. Clone the Repo
+**File:** `app/templates/health.html` (extends `base.html`)
 
-```bash
-git clone <repo-url>
-cd meduseld
-```
+Public health monitoring page (no auth required).
 
-### 2. Create a New Branch
+- **Service status cards** — Control Panel, SSH Terminal, Jellyfin Media
+- **Status indicators** — Online (green), Degraded (yellow), Down (red) with response times
+- **Auto-refresh** — checks all services every 30 seconds
 
-```bash
-git checkout -b feature/your-feature-name
-```
+## API Endpoints
 
-### 3. Make Your Changes
+### Public (No Auth)
 
-Edit files in the `app/` folder:
+| Method | Path                           | Description                  |
+| ------ | ------------------------------ | ---------------------------- |
+| GET    | `/health`                      | Health check                 |
+| GET    | `/api/check-service/<service>` | Check if a service is online |
 
-- `app/webserver.py` - Main Flask application
-- `app/config.py` - Configuration settings
-- `app/templates/panel.html` - Control panel HTML
-- `app/templates/terminal.html` - SSH terminal wrapper
-- `app/static/css/style.css` - Styles
+### Authenticated
 
-### 4. Test Locally (Optional)
+| Method | Path                      | Description                             |
+| ------ | ------------------------- | --------------------------------------- |
+| GET    | `/`                       | Control panel UI                        |
+| POST   | `/start`                  | Start game server                       |
+| POST   | `/stop`                   | Stop game server                        |
+| POST   | `/restart`                | Restart game server (with update check) |
+| POST   | `/kill`                   | Force kill game server                  |
+| GET    | `/api/stats`              | System and server stats                 |
+| GET    | `/api/logs`               | Game server logs                        |
+| GET    | `/api/startup-logs`       | Startup script logs                     |
+| POST   | `/api/clear-startup-logs` | Clear and archive startup logs          |
+| GET    | `/api/server-logs`        | Webserver logs                          |
+| GET    | `/api/console`            | Console output                          |
+| GET    | `/api/check-update`       | Check for game updates                  |
+| GET    | `/api/update-output`      | Update process output                   |
+| GET    | `/api/history`            | Stats history (30 min)                  |
+| GET    | `/api/activity`           | Activity log                            |
+| GET    | `/api/me`                 | Current authenticated user info         |
+| POST   | `/api/sync-identity`      | Sync Discord user data to DB            |
+| GET    | `/jellyfin/*`             | Proxy to Jellyfin service               |
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python app/webserver.py
-```
+### Admin Only
 
-Visit http://localhost:5000 to test.
+| Method | Path                    | Description                       |
+| ------ | ----------------------- | --------------------------------- |
+| GET    | `/api/admin/users`      | List all users                    |
+| PUT    | `/api/admin/users/<id>` | Update user role or active status |
 
-### 5. Commit and Push Your Branch
+## Standalone Services
 
-```bash
-git add .
-git commit -m "Description of what you changed"
-git push -u origin feature/your-feature-name
-```
+### Backup Microservice
 
-### 6. Open a Pull Request
+**File:** `reboot/backup_server.py`
 
-- Go to the GitHub repository
-- Click "Compare & pull request" for your branch
-- Add a description of your changes
-- Submit the PR for review
+Runs independently on port 5003 so backups work even when the main Flask app is down. Triggered from the system page.
 
-### 7. Deploy to Server (After PR is Merged)
+- `POST /backup` — triggers `meduseld-backup.service` via systemd
+- `GET /status` — returns backup progress and result (includes filename on success)
+- `GET /health` — health check
 
-SSH into the server and pull the changes:
+## Authentication
 
-```bash
-ssh vertebra@meduseld.io
-cd /srv/meduseld
-git pull
-sudo systemctl restart icarus-panel
-```
-
-That's it! Your changes are live.
-
-## Understanding the Code
-
-### Main Files
-
-**app/webserver.py**
-
-- The Flask app that runs everything
-- Has routes for `/start`, `/stop`, `/restart`, `/kill`
-- API endpoints like `/api/stats`, `/api/logs`
-- Monitors the server process and collects metrics
-
-**app/config.py**
-
-- All the settings (server paths, timeouts, thresholds)
-- Auto-detects if running in dev or production mode
-- Change `SERVER_DIR` if the Icarus server moves
-
-**app/templates/panel.html**
-
-- The control panel UI
-- Uses Bootstrap for styling
-- Chart.js for the graphs
-- Updates every 5 seconds via JavaScript
-
-**app/templates/terminal.html**
-
-- Wrapper for the SSH terminal
-- Embeds ttyd (the terminal emulator)
-- Has navigation buttons to go back to service
-
-### How It Works
-
-```
-Your Browser
-    ↓
-Cloudflare (handles auth + HTTPS)
-    ↓
-Cloudflare Tunnel (routes to server)
-    ↓
-Flask App (port 5000) → Control Panel
-    ↓
-Monitors Icarus Server Process
-```
-
-For SSH:
-
-```
-Your Browser
-    ↓
-Cloudflare
-    ↓
-ttyd (port 7681) → Terminal
-    ↓
-Ubuntu Server Shell
-```
-
-### Key Concepts
-
-**Server States**
-
-- `offline` - Server not running
-- `starting` - Server is booting up
-- `running` - Server is online
-- `stopping` - Server is shutting down
-- `restarting` - Server is restarting (with update check)
-- `crashed` - Server died unexpectedly
-
-**Process Detection**
-The panel looks for a process named `IcarusServer-Win64-Shipping.exe` (it runs via Wine on Ubuntu). If it finds it, the server is "running".
-
-**Update Detection**
-Checks Steam's API for the latest build ID and compares it to what's installed. If different, shows "Update Available".
-
-## Common Tasks
-
-### Restarting the Panel
-
-If the panel itself is broken:
-
-```bash
-ssh vertebra@meduseld.io
-sudo systemctl restart icarus-panel
-```
-
-### Viewing Panel Logs
-
-```bash
-ssh vertebra@meduseld.io
-tail -f /srv/meduseld/logs/webserver.log
-```
-
-### Restarting the SSH Terminal
-
-If the terminal isn't working:
-
-```bash
-ssh vertebra@meduseld.io
-sudo systemctl restart ttyd
-```
-
-### Checking What's Running
-
-```bash
-ssh vertebra@meduseld.io
-sudo systemctl status icarus-panel
-sudo systemctl status ttyd
-sudo systemctl status cloudflared
-```
-
-### Manually Starting/Stopping Icarus
-
-If you need to bypass the panel:
-
-```bash
-ssh vertebra@meduseld.io
-cd /srv/games/icarus
-./start.sh              # Start server
-pkill -9 IcarusServer   # Stop server
-```
-
-## Troubleshooting
-
-### "Server shows offline but I know it's running"
-
-The process name might have changed. Check:
-
-```bash
-ps aux | grep -i icarus
-```
-
-If the process name is different, update `PROCESS_NAME` in `app/config.py`.
-
-### "Graphs aren't showing data"
-
-The stats collection thread might have crashed. Restart the panel:
-
-```bash
-sudo systemctl restart icarus-panel
-```
-
-### "SSH terminal shows blank page"
-
-1. Check if ttyd is running: `sudo systemctl status ttyd`
-2. Check if terminal.meduseld.io is in Cloudflare Access
-3. Restart ttyd: `sudo systemctl restart ttyd`
-
-### "Can't access the site at all"
-
-1. Check if Cloudflare Tunnel is running: `sudo systemctl status cloudflared`
-2. Check if your email is in the Access list
-3. Try incognito mode (clear cookies)
-
-### "Changes I pushed aren't showing up"
-
-Did you restart the panel after pulling?
-
-```bash
-cd /srv/meduseld
-git pull
-sudo systemctl restart icarus-panel
-```
-
-## API for Nerds
-
-If you want to script things or integrate with other tools:
-
-### Control the Server
-
-```bash
-# Start
-curl -X POST https://panel.meduseld.io/start
-
-# Stop
-curl -X POST https://panel.meduseld.io/stop
-
-# Restart (with update check)
-curl -X POST https://panel.meduseld.io/restart
-
-# Force kill
-curl -X POST https://panel.meduseld.io/kill
-```
-
-### Get Stats
-
-```bash
-# Current stats
-curl https://panel.meduseld.io/api/stats | jq
-
-# Logs
-curl https://panel.meduseld.io/api/logs | jq
-
-# Historical data (30 min)
-curl https://panel.meduseld.io/api/history | jq
-
-# Check for updates
-curl https://panel.meduseld.io/api/check-update | jq
-```
-
-Example response from `/api/stats`:
-
-```json
-{
-  "state": "running",
-  "stats": {
-    "cpu": 15.2,
-    "ram_percent": 45.8,
-    "ram_used": 7.3,
-    "ram_total": 16.0,
-    "disk_percent": 31.2
-  },
-  "icarus": {
-    "cpu": 8.5,
-    "cpu_raw": 34.0,
-    "ram": 3.2
-  },
-  "uptime": 3600,
-  "health": "good"
-}
-```
+- Discord OIDC via Cloudflare Access (herugrim worker bridges Discord OAuth)
+- `CF_Authorization` cookie decoded for cross-origin auth from static pages
+- `Cf-Access-Jwt-Assertion` header used for direct requests
+- Admin role determined by Discord server role, stored in DB `users` table
+- Dev mode uses a fake user with SQLite (no Cloudflare needed)
 
 ## Project Structure
 
 ```
 meduseld/
 ├── app/
-│   ├── webserver.py           # Main Flask app
-│   ├── config.py              # Settings
+│   ├── webserver.py        # Main Flask application
+│   ├── config.py           # Configuration
+│   ├── database.py         # SQLAlchemy init
+│   ├── models.py           # User model
 │   ├── templates/
-│   │   ├── base.html          # Base template
-│   │   ├── panel.html         # Control panel
-│   │   └── terminal.html      # SSH wrapper
-│   └── static/
-│       ├── css/style.css      # Styles
-│       ├── js/main.js         # JavaScript
-│       └── *.png              # Images
-├── logs/                      # Log files
-├── requirements.txt           # Python packages
-├── README.md                  # This file
-└── CHANGELOG.md               # Version history
+│   │   ├── base.html       # Base template
+│   │   ├── panel.html      # Control panel
+│   │   ├── terminal.html   # SSH terminal wrapper
+│   │   └── health.html     # Health dashboard
+│   └── static/             # CSS, JS, images
+├── reboot/
+│   └── backup_server.py    # Standalone backup microservice
+├── monitoring/             # System monitoring service
+├── webhook/                # Deploy webhook
+├── migrations/             # Alembic DB migrations
+├── logs/                   # Log files
+├── requirements.txt        # Python dependencies
+├── CHANGELOG.md            # Version history
+└── README.md               # This file
 ```
 
 ## Tech Stack
 
-- **Python 3.12** + Flask - The web app
-- **Bootstrap 5** - UI framework
-- **Chart.js** - Graphs
-- **ttyd** - Web terminal
-- **Cloudflare Tunnel** - Secure access without port forwarding
-- **Cloudflare Access** - Email authentication
-- **Ubuntu Server 24.04** - Where it all runs
+- Python 3.12 + Flask
+- PostgreSQL + Flask-SQLAlchemy (SQLite in dev)
+- Bootstrap 5 + Chart.js
+- ttyd (web terminal)
+- Cloudflare Tunnel + Cloudflare Access
+- Ubuntu Server 24.04
 
-## Adding New People
+## Local Development
 
-To give someone access:
+```bash
+git clone <repo-url>
+cd meduseld
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python app/webserver.py
+```
 
-1. **Add their email to Cloudflare Access**:
-   - Go to Cloudflare Zero Trust dashboard
-   - Access → Applications → Meduseld
-   - Add their email to the policy
+Runs on `http://localhost:5001` in dev mode with a fake user and SQLite database.
 
-2. **Add them to GitHub** (if they'll make changes):
-   - Repo → Settings → Collaborators
-   - Add their GitHub username
+## Deployment
 
-3. **Tell them the URL**: https://panel.meduseld.io
+Runs as a systemd service (`meduseld.service`) on the production server. Push to main, then pull and restart on the server. The webhook at `/webhook/deploy.sh` can automate this.
 
-They'll get an OTP code via email to login.
-
-## Questions?
-
-Ask in the group chat or check the code - it's pretty straightforward. Most of the logic is in `app/webserver.py`.
+```bash
+sudo systemctl restart meduseld
+```
 
 ## Version
 
-Current version: **0.5.0-alpha** (see CHANGELOG.md for details)
-
-This is an alpha release - we're still testing everything!
+**0.5.0-alpha**
