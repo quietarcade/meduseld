@@ -3047,9 +3047,7 @@ def check_service(service):
                     event = CalendarEvent(
                         title=data["title"],
                         description=data.get("description", ""),
-                        event_date=datetime.fromisoformat(
-                            data["event_date"].replace("Z", "+00:00")
-                        ),
+                        event_date=datetime.strptime(data["event_date"][:19], "%Y-%m-%dT%H:%M:%S"),
                         created_by=user.id,
                     )
                     db.session.add(event)
@@ -3057,7 +3055,7 @@ def check_service(service):
                     logger.info("Admin %s created calendar event: %s", user.username, data["title"])
                     return _cal_cors(jsonify({"id": event.id}), 201)
                 except Exception as e:
-                    logger.error("Failed to create calendar event: %s", e)
+                    logger.error("Failed to create calendar event: %s (data=%s)", e, data)
                     return _cal_cors(jsonify({"error": "Create failed"}), 500)
 
             return _cal_cors(jsonify({"error": "Method not allowed"}), 405)
