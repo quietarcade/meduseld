@@ -2861,20 +2861,30 @@ def _authenticate_from_cookie():
 
     try:
         payload = jwt.decode(cf_token, options={"verify_signature": False})
+        email = payload.get("email", "")
         custom = payload.get("custom", {})
         discord_user = custom.get("discord_user", {}) if isinstance(custom, dict) else {}
 
         if discord_user and discord_user.get("id"):
             discord_id = str(discord_user["id"])
+            username = discord_user.get("username", "")
+            display_name = discord_user.get("global_name", "") or username
+            avatar_hash = discord_user.get("avatar", "")
             is_admin = discord_user.get("is_admin", False)
         else:
             return None
 
         from models import User
 
-        user = User.query.filter_by(discord_id=discord_id).first()
-        if not user:
-            return None
+        # Use get_or_create so users visiting the admin page for the first
+        # time (without having visited a Flask page) still get a DB record.
+        user = User.get_or_create(
+            discord_id=discord_id,
+            username=username,
+            display_name=display_name,
+            avatar_hash=avatar_hash,
+            email=email,
+        )
 
         # Sync admin role from Discord
         if is_admin and user.role != "admin":
