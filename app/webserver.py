@@ -2997,50 +2997,47 @@ def check_service(service):
         return _proxy_microservice("http://127.0.0.1:5004/history")
 
     # Admin users API — proxied through health so static pages don't need
-    # a Cloudflare Access session for panel.meduseld.io
-    if service == "admin-users" or service.startswith("admin-users-"):
-        # Handle CORS preflight for custom X-CF-Authorization header
-        if request.method == "OPTIONS":
-            response = make_response("", 204)
+    # a Cloudflare Access session for panel.meduseld.io.
+    # Endpoint named "team-roster" to avoid ad-blocker false positives
+    # (URLs containing "admin" are commonly blocked by filter lists).
+    if service == "team-roster" or service.startswith("team-roster-"):
+
+        def _cors_response(resp, status=200):
+            """Add CORS headers to admin API responses."""
+            if isinstance(resp, tuple):
+                response = make_response(resp[0], resp[1])
+            else:
+                response = make_response(resp, status)
             origin = request.headers.get("Origin")
             if origin and "meduseld.io" in origin:
                 response.headers["Access-Control-Allow-Origin"] = origin
                 response.headers["Access-Control-Allow-Methods"] = "GET, PUT, OPTIONS"
-                response.headers["Access-Control-Allow-Headers"] = (
-                    "Content-Type, X-CF-Authorization"
-                )
+                response.headers["Access-Control-Allow-Headers"] = "Content-Type"
             return response
 
-        # Log what we actually received for debugging
-        logger.info(
-            "admin-users auth debug: method=%s, has_cookie=%s, has_header=%s, has_query=%s, cookie_keys=%s",
-            request.method,
-            "CF_Authorization" in request.cookies,
-            request.headers.get("X-CF-Authorization") is not None,
-            request.args.get("cf_token") is not None,
-            list(request.cookies.keys()),
-        )
+        if request.method == "OPTIONS":
+            return _cors_response("", 204)
 
         user = _authenticate_from_cookie()
         if not user:
-            return jsonify({"error": "Authentication required"}), 401
+            return _cors_response(jsonify({"error": "Authentication required"}), 401)
         if user.role != "admin":
-            return jsonify({"error": "Insufficient permissions"}), 403
+            return _cors_response(jsonify({"error": "Insufficient permissions"}), 403)
 
-        if service == "admin-users":
+        if service == "team-roster":
             if request.method == "GET":
                 from models import User as UserModel
 
                 users = UserModel.query.order_by(UserModel.created_at.desc()).all()
-                return jsonify({"users": [u.to_dict() for u in users]}), 200
-            return jsonify({"error": "Method not allowed"}), 405
+                return _cors_response(jsonify({"users": [u.to_dict() for u in users]}), 200)
+            return _cors_response(jsonify({"error": "Method not allowed"}), 405)
 
-        # Extract user ID from service name: admin-users-<id>
+        # Extract user ID from service name: team-roster-<id>
         try:
-            target_user_id = int(service.split("admin-users-")[1])
+            target_user_id = int(service.split("team-roster-")[1])
         except (ValueError, IndexError) as e:
-            logger.error("Invalid admin-users proxy path: %s", e)
-            return jsonify({"error": "Invalid user ID"}), 400
+            logger.error("Invalid team-roster proxy path: %s", e)
+            return _cors_response(jsonify({"error": "Invalid user ID"}), 400)
 
         if request.method == "PUT":
             from models import User as UserModel
@@ -3048,34 +3045,40 @@ def check_service(service):
 
             target = UserModel.query.get(target_user_id)
             if not target:
-                return jsonify({"error": "User not found"}), 404
+                return _cors_response(jsonify({"error": "User not found"}), 404)
 
             data = request.get_json()
             if not data:
-                return jsonify({"error": "No data provided"}), 400
+                return _cors_response(jsonify({"error": "No data provided"}), 400)
 
             if target.id == user.id and data.get("role") and data["role"] != "admin":
-                return jsonify({"error": "Cannot change your own role"}), 400
+                return _cors_response(jsonify({"error": "Cannot change your own role"}), 400)
 
             if "role" in data and data["role"] in ("admin", "user"):
                 target.role = data["role"]
             if "is_active" in data and isinstance(data["is_active"], bool):
                 if target.id == user.id and not data["is_active"]:
-                    return jsonify({"error": "Cannot deactivate your own account"}), 400
+                    return _cors_response(
+                        jsonify({"error": "Cannot deactivate your own account"}), 400
+                    )
                 target.is_active = data["is_active"]
 
             try:
                 db.session.commit()
                 logger.info(
-                    f"Admin {user.username} updated user {target.username} via health proxy: role={target.role}, active={target.is_active}"
+                    "Admin %s updated user %s via health proxy: role=%s, active=%s",
+                    user.username,
+                    target.username,
+                    target.role,
+                    target.is_active,
                 )
-                return jsonify({"user": target.to_dict()}), 200
+                return _cors_response(jsonify({"user": target.to_dict()}), 200)
             except Exception as e:
                 db.session.rollback()
                 logger.error("Error updating user via health proxy: %s", e)
-                return jsonify({"error": "Update failed"}), 500
+                return _cors_response(jsonify({"error": "Update failed"}), 500)
 
-        return jsonify({"error": "Method not allowed"}), 405
+        return _cors_response(jsonify({"error": "Method not allowed"}), 405)
 
     if service not in service_urls:
         return jsonify({"status": "error", "message": "Unknown service"}), 404
