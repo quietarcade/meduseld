@@ -664,12 +664,22 @@
             logContent += `<span style="color: #8b5cf6;">${line}</span><br>`;
             continue;
           }
+          // User-initiated stop (expected - red/stop color)
+          else if (line.includes('User stop:')) {
+            logContent += `<div style="border-top: 2px solid #6b1e1e; margin: 10px 0; padding-top: 10px;">
+              <span style="color: #d9534f; font-weight: bold;">⏹ SERVER STOP INITIATED</span>
+            </div>`;
+            logContent += `<span style="color: #d9534f;">${line}</span><br>`;
+            lastSeparatorIndex = i;
+            continue;
+          }
           // Process monitor detected death
           else if (line.includes('Process monitor: Server process no longer running')) {
-            // Check if this was preceded by an idle shutdown or user kill marker
+            // Check if this was preceded by an idle shutdown or user kill/stop marker
             const prevLines = data.logs.slice(Math.max(0, i - 5), i);
             const wasExpected = prevLines.some(
-              (l) => l.includes('Idle shutdown:') || l.includes('User kill:')
+              (l) =>
+                l.includes('Idle shutdown:') || l.includes('User kill:') || l.includes('User stop:')
             );
             if (wasExpected) {
               logContent += `<span style="color: #888; font-size: 0.9em;">${line}</span><br>`;

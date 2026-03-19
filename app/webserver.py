@@ -2012,6 +2012,15 @@ def stop():
         logger.info("Dummy server 'stopped' (simulated via URL parameter)")
         return "", 204
 
+    # Write stop marker to startup log so the panel knows this was user-initiated
+    try:
+        startup_log = os.path.join(SERVER_DIR, "startup.log")
+        with open(startup_log, "a") as f:
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"[{ts}] User stop: Server stopped by user\n")
+    except Exception as e:
+        logger.warning(f"Could not write stop marker: {e}")
+
     kill_server()
 
     def wait():
