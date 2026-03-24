@@ -3166,6 +3166,40 @@ def check_service(service):
 
             return _cal_cors(jsonify({"error": "Method not allowed"}), 405)
 
+    # Jellyfin auth — proxied through health so the services page can call
+    # /api/jellyfin-auth without needing a Cloudflare Access session for
+    # panel.meduseld.io. Uses _authenticate_from_cookie() for auth.
+    if service == "media-auth":
+
+        def _media_cors(resp, status=200):
+            if isinstance(resp, tuple):
+                response = make_response(resp[0], resp[1])
+            else:
+                response = make_response(resp, status)
+            origin = request.headers.get("Origin")
+            if origin and "meduseld.io" in origin:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+                response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response
+
+        if request.method == "OPTIONS":
+            return _media_cors("", 204)
+
+        user = _authenticate_from_cookie()
+        if not user:
+            return _media_cors(jsonify({"error": "Authentication required"}), 401)
+
+        if request.method == "GET":
+            g.user = user
+            result = _jellyfin_auth_inner()
+            if isinstance(result, tuple):
+                return _media_cors(result[0], result[1])
+            return _media_cors(result, 200)
+
+        return _media_cors(jsonify({"error": "Method not allowed"}), 405)
+
     # Admin users API — proxied through health so static pages don't need
     # a Cloudflare Access session for panel.meduseld.io.
     # Endpoint named "team-roster" to avoid ad-blocker false positives
