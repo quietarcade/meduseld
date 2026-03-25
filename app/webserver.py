@@ -3398,8 +3398,8 @@ def check_service(service):
     # Jellyseerr auth — authenticates the user against Jellyseerr using their
     # Jellyfin credentials. Ensures the Jellyfin account exists first (via
     # _jellyfin_auth_inner), then POSTs to Jellyseerr's /api/v1/auth/jellyfin.
-    # Returns the connect.sid session cookie so the client can set it on
-    # requests.meduseld.io via a redirect through the seerr-login proxy page.
+    # Sets the connect.sid cookie on .meduseld.io so it's sent to
+    # requests.meduseld.io, then redirects the user there.
     if service == "seerr-auth":
 
         def _seerr_cors(resp, status=200):
@@ -3481,7 +3481,19 @@ def check_service(service):
                     logger.error("seerr-auth: No connect.sid cookie in Jellyseerr response")
                     return _seerr_cors(jsonify({"error": "No session cookie returned"}), 502)
 
-                return _seerr_cors(jsonify({"connect_sid": connect_sid}), 200)
+                # Redirect to Jellyseerr with the session cookie set on
+                # .meduseld.io so the browser sends it to requests.meduseld.io
+                response = make_response(redirect("https://requests.meduseld.io"))
+                response.set_cookie(
+                    "connect.sid",
+                    connect_sid,
+                    domain=".meduseld.io",
+                    path="/",
+                    httponly=True,
+                    secure=True,
+                    samesite="Lax",
+                )
+                return response
 
             except requests.Timeout:
                 logger.error("seerr-auth: Jellyseerr request timed out")
