@@ -3204,6 +3204,116 @@ def check_service(service):
 
         return _media_cors(jsonify({"error": "Method not allowed"}), 405)
 
+    # Games list API — manages the "Games Up Next" list entries.
+    # GET returns all games (public). POST adds a game (authenticated).
+    # DELETE via /check/games-<app_id> removes a game (admin only) and its votes.
+    if service == "games" or service.startswith("games-"):
+
+        def _games_cors(resp, status=200):
+            if isinstance(resp, tuple):
+                response = make_response(resp[0], resp[1])
+            else:
+                response = make_response(resp, status)
+            origin = request.headers.get("Origin")
+            if origin and "meduseld.io" in origin:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
+                response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return response
+
+        if request.method == "OPTIONS":
+            return _games_cors("", 204)
+
+        if service == "games":
+            if request.method == "GET":
+                from models import GameListEntry
+
+                entries = GameListEntry.query.order_by(GameListEntry.created_at.asc()).all()
+                return _games_cors(jsonify({"games": [e.to_dict() for e in entries]}), 200)
+
+            # POST — add a game (authenticated)
+            user = _authenticate_from_cookie()
+            if not user:
+                return _games_cors(jsonify({"error": "Authentication required"}), 401)
+
+            if request.method == "POST":
+                data = request.get_json()
+                if not data or not data.get("app_id") or not data.get("name"):
+                    return _games_cors(jsonify({"error": "app_id and name required"}), 400)
+
+                from models import GameListEntry
+                from database import db
+
+                app_id = str(data["app_id"]).strip()
+                name = data["name"].strip()
+
+                # Check for duplicate
+                existing = GameListEntry.query.filter_by(app_id=app_id).first()
+                if existing:
+                    return _games_cors(jsonify({"error": "Game already in list"}), 409)
+
+                url = data.get("url", "").strip()
+                if not url:
+                    url = f"https://store.steampowered.com/app/{app_id}/"
+
+                entry = GameListEntry(
+                    app_id=app_id,
+                    name=name,
+                    url=url,
+                    tooltip=data.get("tooltip", "").strip() or None,
+                    added_by=user.id,
+                )
+                try:
+                    db.session.add(entry)
+                    db.session.commit()
+                    logger.info("User %s added game: %s (%s)", user.username, name, app_id)
+                    return _games_cors(jsonify({"game": entry.to_dict()}), 201)
+                except Exception as e:
+                    db.session.rollback()
+                    logger.error("Failed to add game: %s", e)
+                    return _games_cors(jsonify({"error": "Add failed"}), 500)
+
+            return _games_cors(jsonify({"error": "Method not allowed"}), 405)
+
+        # DELETE /check/games-<app_id> — admin only
+        if service.startswith("games-"):
+            target_app_id = service.split("games-", 1)[1]
+            if not target_app_id:
+                return _games_cors(jsonify({"error": "Invalid app ID"}), 400)
+
+            user = _authenticate_from_cookie()
+            if not user:
+                return _games_cors(jsonify({"error": "Authentication required"}), 401)
+            if user.role != "admin":
+                return _games_cors(jsonify({"error": "Insufficient permissions"}), 403)
+
+            if request.method == "DELETE":
+                from models import GameListEntry, GameVote
+                from database import db
+
+                entry = GameListEntry.query.filter_by(app_id=target_app_id).first()
+                if not entry:
+                    return _games_cors(jsonify({"error": "Game not found"}), 404)
+
+                try:
+                    # Delete associated votes first
+                    GameVote.query.filter_by(game_app_id=target_app_id).delete()
+                    db.session.delete(entry)
+                    db.session.commit()
+                    logger.info(
+                        "Admin %s removed game: %s (%s)",
+                        user.username,
+                        entry.name,
+                        target_app_id,
+                    )
+                    return _games_cors(jsonify({"ok": True}), 200)
+                except Exception as e:
+                    db.session.rollback()
+                    logger.error("Failed to remove game: %s", e)
+                    return _games_cors(jsonify({"error": "Delete failed"}), 500)
+
+            return _games_cors(jsonify({"error": "Method not allowed"}), 405)
+
     # Game voting API — lets users rank games in the "Games Up Next" list.
     # GET returns aggregated scores + the current user's votes.
     # PUT submits the user's ranked list (replaces all previous votes).
@@ -3229,12 +3339,12 @@ def check_service(service):
             return _vote_cors(jsonify({"error": "Authentication required"}), 401)
 
         if request.method == "GET":
-            from models import GameVote, User
+            from models import GameVote, GameListEntry
             from sqlalchemy import func
 
             # Aggregate scores: each rank-1 vote = N points, rank-2 = N-1, etc.
-            # N = total number of games being voted on (use 7 as the fixed max)
-            N = 7
+            # N = total number of games in the list (dynamic)
+            N = GameListEntry.query.count() or 7
             all_votes = GameVote.query.all()
 
             # Build per-game scores
@@ -3263,7 +3373,7 @@ def check_service(service):
             )
 
         if request.method == "PUT":
-            from models import GameVote
+            from models import GameVote, GameListEntry
             from database import db
 
             data = request.get_json()
@@ -3271,11 +3381,12 @@ def check_service(service):
                 return _vote_cors(jsonify({"error": "rankings dict required"}), 400)
 
             rankings = data["rankings"]  # {app_id: rank}
+            max_rank = GameListEntry.query.count() or len(rankings)
 
             # Validate ranks
             ranks_seen = set()
             for app_id, rank in rankings.items():
-                if not isinstance(rank, int) or rank < 1 or rank > 7:
+                if not isinstance(rank, int) or rank < 1 or rank > max_rank:
                     return _vote_cors(jsonify({"error": f"Invalid rank {rank} for {app_id}"}), 400)
                 if rank in ranks_seen:
                     return _vote_cors(jsonify({"error": f"Duplicate rank {rank}"}), 400)
@@ -3304,6 +3415,100 @@ def check_service(service):
                 return _vote_cors(jsonify({"error": "Save failed"}), 500)
 
         return _vote_cors(jsonify({"error": "Method not allowed"}), 405)
+
+    # Trivia API — leaderboard and win recording for the trivia game page.
+    if service == "trivia-leaderboard" or service == "trivia-record-win":
+
+        def _trivia_cors(resp, status=200):
+            if isinstance(resp, tuple):
+                response = make_response(resp[0], resp[1])
+            else:
+                response = make_response(resp, status)
+            origin = request.headers.get("Origin")
+            if origin and "meduseld.io" in origin:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+                response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return response
+
+        if request.method == "OPTIONS":
+            return _trivia_cors("", 204)
+
+        if service == "trivia-leaderboard":
+            if request.method == "GET":
+                from models import TriviaWin, User as UserModel
+                from sqlalchemy import func
+
+                # Aggregate wins per user
+                results = (
+                    db.session.query(
+                        TriviaWin.user_id,
+                        func.count(TriviaWin.id).label("wins"),
+                        func.sum(TriviaWin.score).label("total_score"),
+                        func.sum(TriviaWin.total_questions).label("total_questions"),
+                    )
+                    .group_by(TriviaWin.user_id)
+                    .order_by(func.count(TriviaWin.id).desc(), func.sum(TriviaWin.score).desc())
+                    .all()
+                )
+
+                leaderboard = []
+                for row in results:
+                    u = UserModel.query.get(row.user_id)
+                    if u:
+                        leaderboard.append(
+                            {
+                                "user_id": u.id,
+                                "discord_id": u.discord_id,
+                                "display_name": u.display_name or u.username,
+                                "avatar_url": u.avatar_url,
+                                "wins": row.wins,
+                                "total_score": row.total_score,
+                                "total_questions": row.total_questions,
+                            }
+                        )
+
+                return _trivia_cors(jsonify({"leaderboard": leaderboard}), 200)
+            return _trivia_cors(jsonify({"error": "Method not allowed"}), 405)
+
+        if service == "trivia-record-win":
+            if request.method != "POST":
+                return _trivia_cors(jsonify({"error": "Method not allowed"}), 405)
+
+            user = _authenticate_from_cookie()
+            if not user:
+                return _trivia_cors(jsonify({"error": "Authentication required"}), 401)
+
+            data = request.get_json()
+            if (
+                not data
+                or not isinstance(data.get("score"), int)
+                or not isinstance(data.get("total_questions"), int)
+            ):
+                return _trivia_cors(jsonify({"error": "score and total_questions required"}), 400)
+
+            from models import TriviaWin
+
+            try:
+                win = TriviaWin(
+                    user_id=user.id,
+                    score=data["score"],
+                    total_questions=data["total_questions"],
+                    category=data.get("category", ""),
+                )
+                db.session.add(win)
+                db.session.commit()
+                logger.info(
+                    "User %s recorded trivia win: %d/%d",
+                    user.username,
+                    data["score"],
+                    data["total_questions"],
+                )
+                return _trivia_cors(jsonify({"ok": True}), 201)
+            except Exception as e:
+                db.session.rollback()
+                logger.error("Failed to record trivia win: %s", e)
+                return _trivia_cors(jsonify({"error": "Save failed"}), 500)
 
     # Admin users API — proxied through health so static pages don't need
     # a Cloudflare Access session for panel.meduseld.io.

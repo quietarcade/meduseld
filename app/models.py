@@ -165,6 +165,33 @@ class GameVote(db.Model):
     __table_args__ = (db.UniqueConstraint("user_id", "game_app_id", name="uq_user_game_vote"),)
 
 
+class GameListEntry(db.Model):
+    __tablename__ = "game_list_entries"
+
+    id = db.Column(db.Integer, primary_key=True)
+    app_id = db.Column(db.String(32), unique=True, nullable=False)
+    name = db.Column(db.String(256), nullable=False)
+    url = db.Column(db.String(512), nullable=False)
+    tooltip = db.Column(db.String(512))
+    added_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    creator = db.relationship("User", backref="game_list_entries")
+
+    def to_dict(self):
+        return {
+            "app_id": self.app_id,
+            "name": self.name,
+            "url": self.url,
+            "tooltip": self.tooltip,
+            "added_by": self.added_by,
+            "added_by_name": (
+                (self.creator.display_name or self.creator.username) if self.creator else None
+            ),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class TriviaWin(db.Model):
     __tablename__ = "trivia_wins"
 
