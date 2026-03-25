@@ -4442,6 +4442,35 @@ def check_service(service):
 
             return _picker_cors(jsonify({"error": "Method not allowed"}), 405)
 
+    # FellowSync active rooms — public, no auth needed
+    if service == "fellowsync-rooms":
+
+        def _fs_cors(resp, status=200):
+            if isinstance(resp, tuple):
+                response = make_response(resp[0], resp[1])
+            else:
+                response = make_response(resp, status)
+            origin = request.headers.get("Origin")
+            if origin and "meduseld.io" in origin:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+                response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return response
+
+        if request.method == "OPTIONS":
+            return _fs_cors("", 204)
+
+        if request.method == "GET":
+            try:
+                resp = requests.get("http://127.0.0.1:5050/api/rooms/active", timeout=5)
+                resp.raise_for_status()
+                return _fs_cors(jsonify(resp.json()), 200)
+            except Exception as e:
+                logger.error("FellowSync rooms proxy error: %s", e)
+                return _fs_cors(jsonify({"rooms": [], "count": 0}), 200)
+
+        return _fs_cors(jsonify({"error": "Method not allowed"}), 405)
+
     if service not in service_urls:
         return jsonify({"status": "error", "message": "Unknown service"}), 404
 
