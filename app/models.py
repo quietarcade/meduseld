@@ -149,3 +149,43 @@ class EventRSVP(db.Model):
     user = db.relationship("User", backref="rsvps")
 
     __table_args__ = (db.UniqueConstraint("event_id", "user_id", name="uq_event_user_rsvp"),)
+
+
+class GameVote(db.Model):
+    __tablename__ = "game_votes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    game_app_id = db.Column(db.String(32), nullable=False)
+    rank = db.Column(db.Integer, nullable=False)  # 1 = top pick
+    updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship("User", backref="game_votes")
+
+    __table_args__ = (db.UniqueConstraint("user_id", "game_app_id", name="uq_user_game_vote"),)
+
+
+class TriviaWin(db.Model):
+    __tablename__ = "trivia_wins"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    score = db.Column(db.Integer, nullable=False)
+    total_questions = db.Column(db.Integer, nullable=False)
+    category = db.Column(db.String(128))
+    played_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship("User", backref="trivia_wins")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "discord_id": self.user.discord_id if self.user else None,
+            "display_name": self.user.display_name or self.user.username if self.user else None,
+            "avatar_url": self.user.avatar_url if self.user else None,
+            "score": self.score,
+            "total_questions": self.total_questions,
+            "category": self.category,
+            "played_at": self.played_at.isoformat() if self.played_at else None,
+        }

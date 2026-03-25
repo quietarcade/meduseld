@@ -3204,6 +3204,107 @@ def check_service(service):
 
         return _media_cors(jsonify({"error": "Method not allowed"}), 405)
 
+    # Game voting API — lets users rank games in the "Games Up Next" list.
+    # GET returns aggregated scores + the current user's votes.
+    # PUT submits the user's ranked list (replaces all previous votes).
+    if service == "game-votes":
+
+        def _vote_cors(resp, status=200):
+            if isinstance(resp, tuple):
+                response = make_response(resp[0], resp[1])
+            else:
+                response = make_response(resp, status)
+            origin = request.headers.get("Origin")
+            if origin and "meduseld.io" in origin:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Methods"] = "GET, PUT, OPTIONS"
+                response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return response
+
+        if request.method == "OPTIONS":
+            return _vote_cors("", 204)
+
+        user = _authenticate_from_cookie()
+        if not user:
+            return _vote_cors(jsonify({"error": "Authentication required"}), 401)
+
+        if request.method == "GET":
+            from models import GameVote, User
+            from sqlalchemy import func
+
+            # Aggregate scores: each rank-1 vote = N points, rank-2 = N-1, etc.
+            # N = total number of games being voted on (use 7 as the fixed max)
+            N = 7
+            all_votes = GameVote.query.all()
+
+            # Build per-game scores
+            scores = {}  # app_id -> {score, voters, vote_count}
+            for v in all_votes:
+                if v.game_app_id not in scores:
+                    scores[v.game_app_id] = {"score": 0, "vote_count": 0, "voters": []}
+                points = max(N - v.rank + 1, 1)
+                scores[v.game_app_id]["score"] += points
+                scores[v.game_app_id]["vote_count"] += 1
+                voter_name = v.user.display_name or v.user.username if v.user else "Unknown"
+                scores[v.game_app_id]["voters"].append({"display_name": voter_name, "rank": v.rank})
+
+            # Current user's votes
+            my_votes = GameVote.query.filter_by(user_id=user.id).order_by(GameVote.rank.asc()).all()
+            my_rankings = {v.game_app_id: v.rank for v in my_votes}
+
+            # Total unique voters
+            total_voters = len(set(v.user_id for v in all_votes))
+
+            return _vote_cors(
+                jsonify(
+                    {"scores": scores, "my_rankings": my_rankings, "total_voters": total_voters}
+                ),
+                200,
+            )
+
+        if request.method == "PUT":
+            from models import GameVote
+            from database import db
+
+            data = request.get_json()
+            if not data or not isinstance(data.get("rankings"), dict):
+                return _vote_cors(jsonify({"error": "rankings dict required"}), 400)
+
+            rankings = data["rankings"]  # {app_id: rank}
+
+            # Validate ranks
+            ranks_seen = set()
+            for app_id, rank in rankings.items():
+                if not isinstance(rank, int) or rank < 1 or rank > 7:
+                    return _vote_cors(jsonify({"error": f"Invalid rank {rank} for {app_id}"}), 400)
+                if rank in ranks_seen:
+                    return _vote_cors(jsonify({"error": f"Duplicate rank {rank}"}), 400)
+                ranks_seen.add(rank)
+
+            try:
+                # Delete existing votes for this user
+                GameVote.query.filter_by(user_id=user.id).delete()
+
+                # Insert new votes
+                for app_id, rank in rankings.items():
+                    vote = GameVote(
+                        user_id=user.id,
+                        game_app_id=str(app_id),
+                        rank=rank,
+                        updated_at=datetime.utcnow(),
+                    )
+                    db.session.add(vote)
+
+                db.session.commit()
+                logger.info("User %s submitted game votes: %s", user.username, rankings)
+                return _vote_cors(jsonify({"ok": True}), 200)
+            except Exception as e:
+                db.session.rollback()
+                logger.error("Failed to save game votes: %s", e)
+                return _vote_cors(jsonify({"error": "Save failed"}), 500)
+
+        return _vote_cors(jsonify({"error": "Method not allowed"}), 405)
+
     # Admin users API — proxied through health so static pages don't need
     # a Cloudflare Access session for panel.meduseld.io.
     # Endpoint named "team-roster" to avoid ad-blocker false positives
