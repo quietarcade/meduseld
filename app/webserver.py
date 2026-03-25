@@ -3437,6 +3437,7 @@ def check_service(service):
         if service == "trivia-leaderboard":
             if request.method == "GET":
                 from models import TriviaWin, User as UserModel
+                from database import db
                 from sqlalchemy import func
 
                 # Aggregate wins per user
@@ -3488,6 +3489,7 @@ def check_service(service):
                 return _trivia_cors(jsonify({"error": "score and total_questions required"}), 400)
 
             from models import TriviaWin
+            from database import db
 
             try:
                 win = TriviaWin(
