@@ -3540,10 +3540,58 @@ def check_service(service):
 
         if service == "team-roster":
             if request.method == "GET":
-                from models import User as UserModel
+                from models import User as UserModel, TriviaWin
+                from database import db
+                from sqlalchemy import func
 
                 users = UserModel.query.order_by(UserModel.created_at.desc()).all()
-                return _cors_response(jsonify({"users": [u.to_dict() for u in users]}), 200)
+
+                # Aggregate trivia stats per user
+                trivia_stats = {}
+                stats_rows = (
+                    db.session.query(
+                        TriviaWin.user_id,
+                        func.count(TriviaWin.id).label("games_played"),
+                        func.sum(TriviaWin.score).label("total_correct"),
+                        func.sum(TriviaWin.total_questions).label("total_questions"),
+                        func.max(TriviaWin.score).label("best_score"),
+                    )
+                    .group_by(TriviaWin.user_id)
+                    .all()
+                )
+                for row in stats_rows:
+                    total_wrong = (row.total_questions or 0) - (row.total_correct or 0)
+                    accuracy = (
+                        round((row.total_correct / row.total_questions) * 100, 1)
+                        if row.total_questions
+                        else 0
+                    )
+                    trivia_stats[row.user_id] = {
+                        "games_played": row.games_played,
+                        "total_correct": row.total_correct or 0,
+                        "total_wrong": total_wrong,
+                        "total_questions": row.total_questions or 0,
+                        "best_score": row.best_score or 0,
+                        "accuracy": accuracy,
+                    }
+
+                user_list = []
+                for u in users:
+                    d = u.to_dict()
+                    d["trivia"] = trivia_stats.get(
+                        u.id,
+                        {
+                            "games_played": 0,
+                            "total_correct": 0,
+                            "total_wrong": 0,
+                            "total_questions": 0,
+                            "best_score": 0,
+                            "accuracy": 0,
+                        },
+                    )
+                    user_list.append(d)
+
+                return _cors_response(jsonify({"users": user_list}), 200)
             return _cors_response(jsonify({"error": "Method not allowed"}), 405)
 
         # Extract user ID from service name: team-roster-<id>
