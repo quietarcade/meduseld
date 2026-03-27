@@ -87,6 +87,7 @@ class LobbyState:
                 len(self.questions) if self.questions else self.settings.get("num_questions", 10)
             ),
             "host_user_id": self.host_user_id,
+            "host_name": self.players.get(self.host_user_id, {}).get("display_name", "Host"),
         }
 
 
