@@ -86,6 +86,11 @@ class WikiHandler(BaseHTTPRequestHandler):
         elif path.endswith("/"):
             path = path + "index.html"
 
+        # Strip /wiki/ prefix — the scraper saves pages as flat files
+        # but internal links use /wiki/Page_Name format
+        if path.startswith("/wiki/"):
+            path = "/" + path[6:]
+
         # If no extension, try appending .html (wiki pages often lack extensions)
         if "." not in os.path.basename(path):
             path = path + ".html"
@@ -100,16 +105,25 @@ class WikiHandler(BaseHTTPRequestHandler):
         file_path = os.path.join(WIKI_DIR, safe_path)
 
         if not os.path.isfile(file_path):
-            # Try without .html extension as fallback
-            alt_path = file_path.rstrip(".html")
-            if os.path.isfile(alt_path):
-                file_path = alt_path
+            # Try URL-decoded variant (spaces as underscores)
+            alt = file_path.replace("%20", "_")
+            if os.path.isfile(alt):
+                file_path = alt
             else:
-                self.send_response(404)
-                self.send_header("Content-Type", "text/html")
-                self.end_headers()
-                self.wfile.write(b"<h1>404 - Page Not Found</h1>")
-                return
+                # Try without .html
+                base = file_path
+                if base.endswith(".html"):
+                    base = base[:-5]
+                if os.path.isfile(base):
+                    file_path = base
+                else:
+                    # Log for debugging
+                    logger.warning("404: %s (tried %s)", self.path, file_path)
+                    self.send_response(404)
+                    self.send_header("Content-Type", "text/html")
+                    self.end_headers()
+                    self.wfile.write(b"<h1>404 - Page Not Found</h1>")
+                    return
 
         # Determine content type
         content_type, _ = mimetypes.guess_type(file_path)
