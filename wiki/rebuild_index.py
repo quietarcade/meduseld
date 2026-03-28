@@ -101,7 +101,7 @@ h1 {{ color: #e6c65c; }}
 #categories {{ columns: 3; column-gap: 24px; }}
 @media (max-width: 900px) {{ #categories {{ columns: 2; }} }}
 @media (max-width: 600px) {{ #categories {{ columns: 1; }} }}
-.category-section {{ break-inside: avoid; margin-bottom: 12px; }}
+.category-section {{ break-inside: avoid; margin-bottom: 16px; border: 1px solid #e6c65c33; border-radius: 6px; padding: 8px 12px; background: #1e1e38; }}
 .search-box {{ width: 100%; padding: 10px 14px; font-size: 1rem; border: 1px solid #e6c65c44; border-radius: 6px; background: #0f0f23; color: #e0e0e0; margin-bottom: 16px; box-sizing: border-box; }}
 .search-box:focus {{ outline: none; border-color: #e6c65c; }}
 .page-count {{ color: #e6c65c88; font-size: 0.85rem; margin-bottom: 12px; }}
@@ -111,8 +111,7 @@ h1 {{ color: #e6c65c; }}
 .wiki-link a {{ color: #e6c65c; text-decoration: none; font-size: 0.9rem; }}
 .wiki-link a:hover {{ text-decoration: underline; }}
 .wiki-link.hidden {{ display: none; }}
-.category-section {{ margin-bottom: 8px; }}
-.cat-header {{ color: #e6c65c; font-size: 1rem; cursor: pointer; user-select: none; padding: 6px 0; margin: 0; border-bottom: 1px solid #e6c65c22; }}
+.cat-header {{ color: #e6c65c; font-size: 1.15rem; cursor: pointer; user-select: none; padding: 8px 0; margin: 0; border-bottom: 1px solid #e6c65c33; }}
 .cat-header:hover {{ color: #fff; }}
 .cat-count {{ font-size: 0.75rem; color: #e6c65c66; font-weight: normal; margin-left: 6px; }}
 .cat-header::before {{ content: "▾ "; font-size: 0.8rem; }}
