@@ -9,6 +9,7 @@ results are persisted to the database via TriviaWin.
 import re
 import random
 import string
+import html as html_mod
 import logging
 import threading
 import jwt
@@ -351,6 +352,12 @@ def _fetch_questions(settings):
         if data.get("response_code") != 0 or not data.get("results"):
             logger.error("Open Trivia DB returned code %s", data.get("response_code"))
             return None
+        # Decode HTML entities (opentdb returns &amp; &#039; &quot; etc.)
+        for q in data["results"]:
+            q["question"] = html_mod.unescape(q["question"])
+            q["correct_answer"] = html_mod.unescape(q["correct_answer"])
+            q["incorrect_answers"] = [html_mod.unescape(a) for a in q["incorrect_answers"]]
+            q["category"] = html_mod.unescape(q["category"])
         return data["results"]
     except Exception as e:
         logger.error("Failed to fetch trivia questions: %s", e)
