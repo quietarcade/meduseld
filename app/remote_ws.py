@@ -39,8 +39,7 @@ def _get_screen_size():
         return _screen_size_cache["w"], _screen_size_cache["h"]
     try:
         result = subprocess.run(
-            ["xdotool", "getdisplaygeometry"],
-            capture_output=True, text=True, timeout=2
+            ["xdotool", "getdisplaygeometry"], capture_output=True, text=True, timeout=2
         )
         if result.returncode == 0:
             parts = result.stdout.strip().split()
@@ -80,56 +79,80 @@ def _inject_input(evt):
             if evt_type == "mousemove":
                 subprocess.Popen(
                     ["xdotool", "mousemove", "--", str(x), str(y)],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
             elif evt_type == "click":
-                button = str((evt.get("button", 0) or 0) + 1)  # JS 0=left,1=mid,2=right → xdotool 1,2,3
+                button = str(
+                    (evt.get("button", 0) or 0) + 1
+                )  # JS 0=left,1=mid,2=right → xdotool 1,2,3
                 subprocess.Popen(
                     ["xdotool", "mousemove", "--", str(x), str(y)],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
                 subprocess.Popen(
                     ["xdotool", "click", button],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
             elif evt_type == "dblclick":
                 button = str((evt.get("button", 0) or 0) + 1)
                 subprocess.Popen(
                     ["xdotool", "mousemove", "--", str(x), str(y)],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
                 subprocess.Popen(
                     ["xdotool", "click", "--repeat", "2", "--delay", "50", button],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
             elif evt_type == "contextmenu":
                 subprocess.Popen(
                     ["xdotool", "mousemove", "--", str(x), str(y)],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
                 subprocess.Popen(
                     ["xdotool", "click", "3"],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
             elif evt_type == "mousedown":
                 button = str((evt.get("button", 0) or 0) + 1)
                 subprocess.Popen(
                     ["xdotool", "mousemove", "--", str(x), str(y)],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
                 subprocess.Popen(
                     ["xdotool", "mousedown", button],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
             elif evt_type == "mouseup":
                 button = str((evt.get("button", 0) or 0) + 1)
                 subprocess.Popen(
                     ["xdotool", "mousemove", "--", str(x), str(y)],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
                 subprocess.Popen(
                     ["xdotool", "mouseup", button],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
             return True
 
@@ -141,7 +164,9 @@ def _inject_input(evt):
             y = int(evt.get("y", 0) * screen_h)
             subprocess.Popen(
                 ["xdotool", "mousemove", "--", str(x), str(y)],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env=env,
             )
             delta_y = evt.get("deltaY", 0)
             # xdotool: button 4 = scroll up, button 5 = scroll down
@@ -149,7 +174,9 @@ def _inject_input(evt):
             clicks = max(1, min(10, abs(int(delta_y / 50))))
             subprocess.Popen(
                 ["xdotool", "click", "--repeat", str(clicks), scroll_button],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env=env,
             )
             return True
 
@@ -158,7 +185,9 @@ def _inject_input(evt):
             if key:
                 subprocess.Popen(
                     ["xdotool", "keydown", key],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
                 return True
 
@@ -167,7 +196,9 @@ def _inject_input(evt):
             if key:
                 subprocess.Popen(
                     ["xdotool", "keyup", key],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
                 )
                 return True
 
@@ -178,15 +209,41 @@ def _inject_input(evt):
 
 # Map JS key names to xdotool key names
 _JS_TO_XDOTOOL_KEYS = {
-    "Enter": "Return", "Backspace": "BackSpace", "Tab": "Tab",
-    "Escape": "Escape", "Delete": "Delete", "Insert": "Insert",
-    "Home": "Home", "End": "End", "PageUp": "Prior", "PageDown": "Next",
-    "ArrowUp": "Up", "ArrowDown": "Down", "ArrowLeft": "Left", "ArrowRight": "Right",
-    "Control": "Control_L", "Shift": "Shift_L", "Alt": "Alt_L", "Meta": "Super_L",
-    "CapsLock": "Caps_Lock", "NumLock": "Num_Lock", "ScrollLock": "Scroll_Lock",
-    "F1": "F1", "F2": "F2", "F3": "F3", "F4": "F4", "F5": "F5", "F6": "F6",
-    "F7": "F7", "F8": "F8", "F9": "F9", "F10": "F10", "F11": "F11", "F12": "F12",
-    " ": "space", "ContextMenu": "Menu",
+    "Enter": "Return",
+    "Backspace": "BackSpace",
+    "Tab": "Tab",
+    "Escape": "Escape",
+    "Delete": "Delete",
+    "Insert": "Insert",
+    "Home": "Home",
+    "End": "End",
+    "PageUp": "Prior",
+    "PageDown": "Next",
+    "ArrowUp": "Up",
+    "ArrowDown": "Down",
+    "ArrowLeft": "Left",
+    "ArrowRight": "Right",
+    "Control": "Control_L",
+    "Shift": "Shift_L",
+    "Alt": "Alt_L",
+    "Meta": "Super_L",
+    "CapsLock": "Caps_Lock",
+    "NumLock": "Num_Lock",
+    "ScrollLock": "Scroll_Lock",
+    "F1": "F1",
+    "F2": "F2",
+    "F3": "F3",
+    "F4": "F4",
+    "F5": "F5",
+    "F6": "F6",
+    "F7": "F7",
+    "F8": "F8",
+    "F9": "F9",
+    "F10": "F10",
+    "F11": "F11",
+    "F12": "F12",
+    " ": "space",
+    "ContextMenu": "Menu",
 }
 
 
@@ -308,6 +365,7 @@ def register_remote_ws(socketio):
         request.environ["remote_user"] = user
         emit("welcome", {"user_id": user.id})
         logger.info("Remote WS: %s connected (sid=%s)", user.username, request.sid)
+        return None
 
     @socketio.on("disconnect", namespace="/remote")
     def on_disconnect():
@@ -652,7 +710,10 @@ def register_remote_ws(socketio):
             return
 
         if not _xdotool_available:
-            emit("error", {"message": "OS control not available on this server (xdotool not installed)"})
+            emit(
+                "error",
+                {"message": "OS control not available on this server (xdotool not installed)"},
+            )
             return
 
         with session.lock:

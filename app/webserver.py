@@ -5037,7 +5037,7 @@ def serve_fame_media(filename):
         return resp
     except Exception as e:
         logger.error("Failed to serve fame media %s: %s", filename, e)
-        abort(500)
+        return abort(500)
 
 
 # ================= JELLYFIN PROXY =================
@@ -5158,7 +5158,7 @@ def jellyfin_catch_all(path):
         return redirect("/")
 
     # Otherwise 404
-    abort(404)
+    return abort(404)
 
 
 # ================= BACKGROUND THREADS =================
