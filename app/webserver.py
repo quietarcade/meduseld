@@ -2965,6 +2965,12 @@ def _authenticate_from_cookie():
         except Exception:
             pass
     if not cf_token:
+        # Check form data for _cf_token (used by multipart/form-data uploads)
+        try:
+            cf_token = request.form.get("_cf_token")
+        except Exception:
+            pass
+    if not cf_token:
         logger.warning(
             "_authenticate_from_cookie: No auth token found in cookie, header, query, or body"
         )
