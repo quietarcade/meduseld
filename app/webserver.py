@@ -2350,7 +2350,8 @@ def api_console():
             lines = f.readlines()[-200:]
         return jsonify({"lines": lines})
     except Exception as e:
-        return jsonify({"error": str(e)})
+        logger.error("Error reading log file: %s", e)
+        return jsonify({"error": "Failed to read logs"})
 
 
 @app.route("/api/stats")
@@ -2446,7 +2447,7 @@ def api_stats():
         return (
             jsonify(
                 {
-                    "error": str(e),
+                    "error": "Internal server error",
                     "state": "offline",
                     "stats": {
                         "cpu": 0,
@@ -2594,7 +2595,7 @@ def api_clear_startup_logs():
             return jsonify({"success": True, "message": "No logs to clear"})
     except Exception as e:
         logger.error(f"Error clearing startup log: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": "Failed to clear logs"}), 500
 
 
 @app.route("/download-backup")
@@ -2921,7 +2922,7 @@ def api_server_logs():
         )
     except Exception as e:
         logger.error(f"Error reading server logs: {e}")
-        return jsonify({"logs": [], "error": str(e)}), 500
+        return jsonify({"logs": [], "error": "Failed to read logs"}), 500
 
 
 @app.route("/api/history")
@@ -3211,7 +3212,8 @@ def _proxy_microservice(url):
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Service unavailable"}), 503
     except Exception as e:
-        return jsonify({"error": str(e)}), 502
+        logger.error("Error checking service health: %s", e)
+        return jsonify({"error": "Service check failed"}), 502
 
 
 @app.route("/check/<service>", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
@@ -4998,7 +5000,8 @@ def check_service(service):
         else:
             return jsonify({"status": "error", "code": response.status_code}), 502
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 502
+        logger.error("Error checking service status: %s", e)
+        return jsonify({"status": "error", "message": "Service check failed"}), 502
 
 
 # ================= FAME MEDIA =================
