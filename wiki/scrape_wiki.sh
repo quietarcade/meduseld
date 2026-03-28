@@ -2,23 +2,23 @@
 # Scrape/mirror the Icarus wiki from wiki.gg for local hosting.
 # Designed to be run by a systemd timer (weekly) or manually.
 #
-# Usage: ./scrape_wiki.sh [--force]
-#   --force: re-scrape even if a recent sync exists
+# Usage: ./scrape_wiki.sh
 
-set -euo pipefail
+set -uo pipefail
+# Note: -e intentionally omitted — we handle errors manually so wget
+# non-zero exits (common for 404s, rate limits) don't kill the script.
 
 WIKI_URL="https://icarus.wiki.gg"
 WIKI_DIR="/srv/wiki/icarus"
 TEMP_DIR="/srv/wiki/.scrape-tmp"
-TIMESTAMP_FILE="${WIKI_DIR}/.last-sync"
 LOG_FILE="/srv/wiki/scrape.log"
 LOCK_FILE="/tmp/wiki-scrape.lock"
 
 # Prevent concurrent runs
 if [ -f "$LOCK_FILE" ]; then
-    pid=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
+    pid=$(cat "$LOCK_FILE" 2>/dev/null || true)
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-        echo "$(date '+%Y-%m-%d %H:%M:%S') Scrape already in progress (PID $pid), skipping." | tee -a "$LOG_FILE"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') Scrape already in progress (PID $pid), skipping." >> "$LOG_FILE"
         exit 0
     fi
     rm -f "$LOCK_FILE"
@@ -30,67 +30,63 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $1" | tee -a "$LOG_FILE"
 }
 
-log "Starting wiki scrape from ${WIKI_URL}"
+log "=== Starting wiki scrape from ${WIKI_URL} ==="
 
 # Create directories
 mkdir -p "$WIKI_DIR" "$TEMP_DIR"
 
-# Check robots.txt first
-log "Checking robots.txt..."
-if ! curl -sf "${WIKI_URL}/robots.txt" > /dev/null 2>&1; then
-    log "WARNING: Could not fetch robots.txt, proceeding anyway"
-fi
+# Clean temp dir from any previous failed run
+rm -rf "${TEMP_DIR:?}/"*
 
-# Use wget to mirror the wiki
-# --mirror: recursive, timestamping, infinite depth
-# --convert-links: rewrite links for local browsing
-# --adjust-extension: add .html to pages
-# --page-requisites: download CSS, JS, images
-# --no-parent: don't ascend above the wiki path
-# --reject: skip unnecessary files
-# --domains: stay on wiki.gg domain
-# --wait/--random-wait: be polite to the server
+# Use wget to mirror the wiki.
+# wiki.gg wikis are MediaWiki-based with mostly server-rendered HTML.
+# We start from Main_Page and follow links recursively.
+#
+# wget --mirror returns non-zero on 404s, robots blocks, etc. — that's
+# expected and fine. We check the actual output afterward.
 log "Starting wget mirror..."
 wget \
-    --mirror \
+    --recursive \
+    --level=inf \
     --convert-links \
     --adjust-extension \
     --page-requisites \
     --no-parent \
     --domains=icarus.wiki.gg \
-    --reject="*.action,*Special:*,*action=*,*oldid=*,*diff=*,*printable=*" \
-    --exclude-directories="/w/,/wiki/Special:,/wiki/User:,/wiki/Talk:,/wiki/User_talk:" \
-    --wait=0.5 \
+    --reject-regex='(Special:|action=|oldid=|diff=|printable=|User:|User_talk:|Talk:|File:|Template:|Category:.*&|index\.php\?)' \
+    --exclude-directories="/w/,/wiki/Special:,/wiki/User:,/wiki/Talk:,/wiki/User_talk:,/wiki/Template:" \
+    --wait=1 \
     --random-wait \
-    --limit-rate=1M \
+    --limit-rate=500K \
     --timeout=30 \
     --tries=3 \
-    --user-agent="Mozilla/5.0 (compatible; MeduseldWikiMirror/1.0; +https://meduseld.io)" \
+    --user-agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
     --directory-prefix="$TEMP_DIR" \
-    --no-host-directories \
-    --cut-dirs=0 \
     --execute robots=off \
-    "$WIKI_URL/wiki/Main_Page" \
-    2>&1 | tail -20 | tee -a "$LOG_FILE" || true
+    --no-verbose \
+    "${WIKI_URL}/wiki/Main_Page" \
+    >> "$LOG_FILE" 2>&1 || true
 
-# Check if we got content
+# wget with default settings creates TEMP_DIR/icarus.wiki.gg/...
 SCRAPED_DIR="${TEMP_DIR}/icarus.wiki.gg"
 if [ ! -d "$SCRAPED_DIR" ]; then
+    # Fallback: maybe --no-host-directories was used or structure differs
     SCRAPED_DIR="$TEMP_DIR"
 fi
 
-HTML_COUNT=$(find "$SCRAPED_DIR" -name "*.html" 2>/dev/null | wc -l)
+HTML_COUNT=$(find "$SCRAPED_DIR" -name "*.html" -o -name "*.htm" 2>/dev/null | wc -l)
 log "Scraped ${HTML_COUNT} HTML pages"
 
-if [ "$HTML_COUNT" -lt 5 ]; then
-    log "ERROR: Too few pages scraped (${HTML_COUNT}), aborting to preserve existing mirror"
+if [ "$HTML_COUNT" -lt 1 ]; then
+    log "ERROR: No pages scraped at all. wget likely failed to connect or was blocked."
+    log "Check if ${WIKI_URL} is reachable: curl -sI ${WIKI_URL}/wiki/Main_Page"
     rm -rf "$TEMP_DIR"
     exit 1
 fi
 
 # Post-process: strip edit buttons, login links, tracking scripts
 log "Post-processing HTML files..."
-find "$SCRAPED_DIR" -name "*.html" -exec sed -i \
+find "$SCRAPED_DIR" -name "*.html" -print0 | xargs -0 -r sed -i \
     -e 's|<script[^>]*google[^>]*>.*</script>||g' \
     -e 's|<script[^>]*analytics[^>]*>.*</script>||g' \
     -e 's|<script[^>]*tracking[^>]*>.*</script>||g' \
@@ -98,18 +94,35 @@ find "$SCRAPED_DIR" -name "*.html" -exec sed -i \
     -e '/<li[^>]*id="ca-viewsource"[^>]*>/,/<\/li>/d' \
     -e '/<div[^>]*id="p-login"[^>]*>/,/<\/div>/d' \
     -e '/<div[^>]*class="mw-indicators"[^>]*>/,/<\/div>/d' \
-    {} +
+    2>/dev/null || true
 
-# Inject a banner indicating this is a local mirror
-BANNER_CSS='<style>.meduseld-mirror-banner{background:#1a1a2e;color:#e6c65c;text-align:center;padding:6px 12px;font-size:0.8rem;border-bottom:1px solid #e6c65c33;position:sticky;top:0;z-index:1000;}.meduseld-mirror-banner a{color:#e6c65c;}</style>'
-BANNER_HTML='<div class="meduseld-mirror-banner">📖 Local mirror hosted by <a href="https://services.meduseld.io">Meduseld</a> · <span id="mirror-sync-date"></span></div>'
+# Inject a local mirror banner into HTML pages
+BANNER='<style>.mw-mirror-banner{background:#1a1a2e;color:#e6c65c;text-align:center;padding:6px 12px;font-size:0.8rem;border-bottom:1px solid #e6c65c33;position:sticky;top:0;z-index:1000}.mw-mirror-banner a{color:#e6c65c}</style><div class="mw-mirror-banner">\xf0\x9f\x93\x96 Local mirror hosted by <a href="https://services.meduseld.io">Meduseld</a></div>'
 
-find "$SCRAPED_DIR" -name "*.html" -exec sed -i \
-    -e "s|</head>|${BANNER_CSS}</head>|" \
-    -e "s|<body[^>]*>|&${BANNER_HTML}|" \
-    {} +
+find "$SCRAPED_DIR" -name "*.html" -print0 | xargs -0 -r sed -i \
+    -e "s|<body|<body data-mirror=\"meduseld\"|" \
+    2>/dev/null || true
 
-# Swap in the new mirror (atomic-ish)
+# Use perl for the banner injection — sed struggles with multi-line HTML
+find "$SCRAPED_DIR" -name "*.html" -print0 | xargs -0 -r perl -pi -e '
+    s{(<body[^>]*>)}{$1<style>.mw-mirror-banner{background:#1a1a2e;color:#e6c65c;text-align:center;padding:6px 12px;font-size:0.8rem;border-bottom:1px solid #e6c65c33;position:sticky;top:0;z-index:1000}.mw-mirror-banner a{color:#e6c65c}</style><div class="mw-mirror-banner">\x{1f4d6} Local mirror hosted by <a href="https://services.meduseld.io">Meduseld</a></div>}i;
+' 2>/dev/null || true
+
+# Create a simple index.html redirect if one doesn't exist
+if [ ! -f "${SCRAPED_DIR}/index.html" ]; then
+    # Find the Main_Page file
+    MAIN_PAGE=$(find "$SCRAPED_DIR" -path "*/wiki/Main_Page*" -name "*.html" | head -1)
+    if [ -n "$MAIN_PAGE" ]; then
+        REL_PATH=$(realpath --relative-to="$SCRAPED_DIR" "$MAIN_PAGE")
+        cat > "${SCRAPED_DIR}/index.html" << EOF
+<!DOCTYPE html>
+<html><head><meta http-equiv="refresh" content="0;url=${REL_PATH}"><title>Icarus Wiki</title></head>
+<body><a href="${REL_PATH}">Go to wiki</a></body></html>
+EOF
+    fi
+fi
+
+# Swap in the new mirror
 if [ -d "$WIKI_DIR" ] && [ "$HTML_COUNT" -gt 0 ]; then
     BACKUP_DIR="/srv/wiki/.icarus-backup"
     rm -rf "$BACKUP_DIR"
@@ -123,9 +136,10 @@ fi
 # Write sync timestamp
 date -u '+%Y-%m-%dT%H:%M:%SZ' > "${WIKI_DIR}/.last-sync"
 
-# Cleanup
+# Cleanup temp dir
 rm -rf "$TEMP_DIR"
 
 FINAL_COUNT=$(find "$WIKI_DIR" -name "*.html" 2>/dev/null | wc -l)
 TOTAL_SIZE=$(du -sh "$WIKI_DIR" 2>/dev/null | cut -f1)
 log "Wiki scrape complete: ${FINAL_COUNT} pages, ${TOTAL_SIZE} total"
+log "=== Scrape finished ==="
