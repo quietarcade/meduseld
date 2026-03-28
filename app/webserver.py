@@ -5056,13 +5056,20 @@ def jellyfin_catch_all(path):
         user_id = request.args.get("userId", "")
         server_id = request.args.get("serverId", "")
 
-        # Escape values for safe inline script embedding (prevent </script> injection)
-        def _js_safe(val):
-            return json.dumps(val).replace("<", "\\u003c").replace(">", "\\u003e")
+        # Validate inputs are alphanumeric (Jellyfin tokens/IDs are hex strings)
+        import re as _re
 
-        _safe_token = _js_safe(token)
-        _safe_user_id = _js_safe(user_id)
-        _safe_server_id = _js_safe(server_id)
+        _safe_pattern = _re.compile(r"^[a-zA-Z0-9_-]*$")
+        if (
+            not _safe_pattern.match(token)
+            or not _safe_pattern.match(user_id)
+            or not _safe_pattern.match(server_id)
+        ):
+            return redirect("https://jellyfin.meduseld.io")
+
+        _safe_token = json.dumps(token)
+        _safe_user_id = json.dumps(user_id)
+        _safe_server_id = json.dumps(server_id)
         if not token or not user_id:
             return redirect("https://jellyfin.meduseld.io")
         return (
