@@ -293,7 +293,7 @@ def _normalize_answer(text):
         if text.startswith(prefix):
             text = text[len(prefix) :]
     # Remove accents and special chars for comparison
-    text = re.sub(r"[''`]", "", text)
+    text = re.sub(r"['\u2018\u2019`]", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
