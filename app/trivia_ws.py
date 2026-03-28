@@ -125,10 +125,23 @@ def _authenticate_socket():
             return None
 
         from models import User
+        from database import db
 
-        user = User.query.filter_by(discord_id=str(discord_user["id"])).first()
+        discord_id = str(discord_user["id"])
+        user = User.query.filter_by(discord_id=discord_id).first()
         if not user:
-            return None
+            # Auto-create user record from JWT data (same as sync-identity)
+            user = User(
+                discord_id=discord_id,
+                username=discord_user.get("username", ""),
+                display_name=discord_user.get("global_name") or discord_user.get("username", ""),
+                avatar_hash=discord_user.get("avatar", ""),
+                email=payload.get("email", ""),
+                role="admin" if discord_user.get("is_admin") else "user",
+            )
+            db.session.add(user)
+            db.session.commit()
+            logger.info("Trivia WS: auto-created user %s (%s)", user.username, discord_id)
         return user
     except Exception as e:
         logger.error("Socket auth failed: %s", e)
