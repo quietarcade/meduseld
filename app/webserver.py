@@ -5012,13 +5012,17 @@ def serve_fame_media(filename):
     if host != "health.meduseld.io":
         abort(404)
 
-    if not filename or "/" in filename or ".." in filename:
+    if not filename:
+        abort(404)
+
+    from werkzeug.utils import secure_filename as _secure_filename
+
+    safe_name = _secure_filename(filename)
+    if not safe_name:
         abort(404)
 
     base_path = "/srv/media/fame"
-    filepath = os.path.normpath(os.path.join(base_path, filename))
-    if not filepath.startswith(base_path + os.sep):
-        abort(404)
+    filepath = os.path.join(base_path, safe_name)
     if not os.path.isfile(filepath):
         abort(404)
 
