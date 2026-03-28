@@ -112,6 +112,7 @@ def fetch_page_html(title):
             "action": "parse",
             "page": title,
             "prop": "text|categories|displaytitle",
+            "redirects": "1",
         }
     )
     if not data or "parse" not in data:
