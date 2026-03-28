@@ -125,29 +125,28 @@ def fetch_page_html(title):
 
 
 def fetch_wiki_css():
-    """Fetch the wiki's main CSS for styling."""
+    """Get CSS link tags from the wiki's head HTML.
+    Returns the raw <link> tags rather than downloading CSS content,
+    since wiki.gg's Cloudflare blocks programmatic CSS downloads but
+    browsers can load the stylesheets directly."""
     params = {
         "action": "parse",
         "page": "Main_Page",
         "prop": "headhtml",
+        "redirects": "1",
     }
     data = api_request(params)
     if not data or "parse" not in data:
         return ""
     head = data["parse"].get("headhtml", {}).get("*", "")
-    # Extract stylesheet links
-    css_links = re.findall(r'<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"', head)
-    css_content = []
-    for link in css_links:
-        url = link if link.startswith("http") else f"{WIKI_BASE}{link}"
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                css_content.append(resp.read().decode("utf-8", errors="replace"))
-        except Exception as e:
-            log.warning("Failed to fetch CSS %s: %s", url, e)
-        time.sleep(CRAWL_DELAY)
-    return "\n".join(css_content)
+    # Extract stylesheet link tags and keep them as-is
+    links = re.findall(r'<link[^>]+rel="stylesheet"[^>]+/?>', head)
+    # Make URLs absolute
+    result = []
+    for link in links:
+        link = re.sub(r'href="/', f'href="{WIKI_BASE}/', link)
+        result.append(link)
+    return "\n".join(result)
 
 
 def title_to_filename(title):
@@ -174,6 +173,9 @@ def build_page_html(title, display_title, body_html, css, all_titles):
         return match.group(0)
 
     body_html = re.sub(r'href="(/wiki/[^"]*)"', rewrite_link, body_html)
+    # Make relative image/resource URLs absolute so browsers load from wiki.gg
+    body_html = re.sub(r'src="(/[^"]*)"', f'src="{WIKI_BASE}\\1"', body_html)
+    body_html = re.sub(r'srcset="(/[^"]*)"', f'srcset="{WIKI_BASE}\\1"', body_html)
     # Remove edit links
     body_html = re.sub(
         r'<span class="mw-editsection">.*?</span></span>', "", body_html, flags=re.DOTALL
@@ -185,32 +187,26 @@ def build_page_html(title, display_title, body_html, css, all_titles):
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{display_title} - Icarus Wiki</title>
-<style>
 {css}
+<style>
 body {{ background: #1a1a2e; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; }}
 .mirror-nav {{ background: #0f0f23; border-bottom: 2px solid #e6c65c33; padding: 8px 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 1000; }}
 .mirror-nav a {{ color: #e6c65c; text-decoration: none; font-size: 0.85rem; }}
 .mirror-nav a:hover {{ text-decoration: underline; }}
-.mirror-nav .brand {{ font-weight: 600; }}
-.mirror-nav .sep {{ color: #e6c65c44; }}
 .mirror-nav .back {{ margin-left: auto; }}
-.mw-parser-output {{ max-width: 960px; margin: 20px auto; padding: 0 20px; }}
-.mw-parser-output a {{ color: #e6c65c; }}
-.mw-parser-output a:visited {{ color: #c4a84a; }}
-.mw-parser-output img {{ max-width: 100%; height: auto; }}
-.mw-parser-output table {{ border-collapse: collapse; }}
-.mw-parser-output th, .mw-parser-output td {{ border: 1px solid #333; padding: 6px 10px; }}
-.mw-parser-output th {{ background: #252540; }}
-.mw-parser-output h1, .mw-parser-output h2, .mw-parser-output h3 {{ color: #e6c65c; border-bottom: 1px solid #e6c65c33; padding-bottom: 4px; }}
-.infobox, .wikitable {{ background: #1e1e38; }}
+.mw-body-content {{ max-width: 960px; margin: 20px auto; padding: 0 20px; }}
+.mw-body-content a {{ color: #e6c65c; }}
+.mw-body-content a:visited {{ color: #c4a84a; }}
+.mw-body-content img {{ max-width: 100%; height: auto; }}
+.mw-body-content h1, .mw-body-content h2, .mw-body-content h3 {{ color: #e6c65c; }}
 </style>
 </head>
-<body>
+<body class="mediawiki skin-citizen">
 <nav class="mirror-nav">
   <a href="https://services.meduseld.io">\u2190 Back to Services</a>
   <a href="index.html" class="back">All Pages</a>
 </nav>
-<div class="mw-parser-output">
+<div class="mw-body-content mw-parser-output">
 <h1>{display_title}</h1>
 {body_html}
 </div>
@@ -381,11 +377,6 @@ def main():
         env=env,
     )
 
-    # Download images
-    log.info("Downloading images...")
-    img_count = download_images(pages_dir)
-    log.info("Downloaded %d images", img_count)
-
     # Swap in the new mirror
     backup_dir = WIKI_DIR.parent / ".icarus-backup"
     if backup_dir.exists():
@@ -412,10 +403,7 @@ def main():
         shutil.rmtree(TEMP_DIR)
 
     total_html = sum(1 for _ in WIKI_DIR.glob("*.html"))
-    total_images = (
-        sum(1 for _ in (WIKI_DIR / "images").glob("*")) if (WIKI_DIR / "images").exists() else 0
-    )
-    log.info("Wiki scrape complete: %d pages, %d images", total_html, total_images)
+    log.info("Wiki scrape complete: %d pages", total_html)
     log.info("=== Scrape finished ===")
     return 0
 
