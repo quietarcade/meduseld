@@ -16,6 +16,7 @@ def _ensure_columns(app):
         # (table, column, column_sql) — column_sql uses the DB's native type
         needed = [
             ("fame_entries", "tag", "VARCHAR(64)"),
+            ("dnd_links", "image_url", "VARCHAR(512)"),
         ]
         for table, column, col_type in needed:
             if table in inspector.get_table_names():
