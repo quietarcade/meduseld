@@ -255,10 +255,13 @@ if IS_DEV:
             f.write("exit 0\n")
         os.chmod(UPDATE_SCRIPT, 0o755)
 
-    print(f"[DEV MODE] Running in development mode")
-    print(f"[DEV MODE] Server directory: {SERVER_DIR}")
-    print(f"[DEV MODE] Game server controls will use dummy processes")
-    print(f"[DEV MODE] You can test all buttons - they will start/stop dummy processes")
+    import logging as _log
+
+    _log.getLogger(__name__).info("Running in development mode")
+    _log.getLogger(__name__).info("Server directory: %s", SERVER_DIR)
+    _log.getLogger(__name__).info("Game server controls will use dummy processes")
 else:
-    print(f"[PRODUCTION] Running in production mode")
-    print(f"[PRODUCTION] Server directory: {SERVER_DIR}")
+    import logging as _log
+
+    _log.getLogger(__name__).info("Running in production mode")
+    _log.getLogger(__name__).info("Server directory: %s", SERVER_DIR)
