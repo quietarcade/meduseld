@@ -89,7 +89,7 @@ class BackupHandler(BaseHTTPRequestHandler):
                         with open("/tmp/meduseld-last-backup-name", "r") as f:
                             filename = f.read().strip()
                     except Exception:
-                        pass
+                        pass  # Backup name file may not exist; filename stays None
                     backup_status = {
                         "running": False,
                         "last_result": "success",

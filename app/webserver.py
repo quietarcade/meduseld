@@ -1222,9 +1222,9 @@ def get_system_stats():
                         usage = psutil.disk_usage(partition.mountpoint)
                         total_disk_size += usage.total
                         used_disk_size += usage.used
-                    except:
-                        pass
-        except:
+                    except Exception:
+                        pass  # Skip inaccessible partitions (permission denied, etc.)
+        except Exception:
             # Fallback to root filesystem only
             total_disk_size = disk.total
             used_disk_size = disk.used
@@ -2906,7 +2906,7 @@ def api_server_logs():
                 logs = [line for line in result.stdout.strip().split("\n")]
                 return jsonify({"logs": logs, "count": len(logs), "source": "journalctl"})
         except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass
+            pass  # journalctl not available or timed out; fall through to error response
 
         return jsonify(
             {
@@ -2979,13 +2979,13 @@ def _authenticate_from_cookie():
             if body and isinstance(body, dict):
                 cf_token = body.get("_cf_token")
         except Exception:
-            pass
+            pass  # Request body may not be JSON; fall through to next check
     if not cf_token:
         # Check form data for _cf_token (used by multipart/form-data uploads)
         try:
             cf_token = request.form.get("_cf_token")
         except Exception:
-            pass
+            pass  # Request may not have form data; fall through to failure
     if not cf_token:
         logger.warning(
             "_authenticate_from_cookie: No auth token found in cookie, header, query, or body"
@@ -3049,8 +3049,8 @@ def check_achievements(user):
         logger.error("Achievement check failed for user %s: %s", user.username, e)
         try:
             db.session.rollback()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Failed to rollback after achievement check error: %s", e)
         return []
 
 
