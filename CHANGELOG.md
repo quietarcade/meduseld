@@ -2,6 +2,99 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.9.0-alpha](https://github.com/meduseld404/meduseld-backend/compare/v0.8.0-alpha...v0.9.0-alpha) (2026-03-30)
+
+
+### New Features
+
+* **api:** Add Country Flags trivia category with fuzzy matching ([928d9ae](https://github.com/meduseld404/meduseld-backend/commit/928d9ae9ed7bcdeb56a767852f36e942da35c4b9))
+* **api:** Add D&D Companion backend API and models ([335b683](https://github.com/meduseld404/meduseld-backend/commit/335b68314e011faed438be8254a9dc225a5a11ba))
+* **api:** Add DELETE endpoint for picker history ([01d1957](https://github.com/meduseld404/meduseld-backend/commit/01d1957d75350f48375113988e8860642295042e))
+* **api:** Add image_url field to DndLink model ([2c6dd12](https://github.com/meduseld404/meduseld-backend/commit/2c6dd1213f39ea1862ce1841a43c4de05c1494df))
+* **api:** Add OS-level input injection via xdotool for remote desktop ([2df627c](https://github.com/meduseld404/meduseld-backend/commit/2df627c3a6369c7c9d0804874da13dd63366caf8))
+* **api:** Add Party Game Picker models and API endpoints ([6d423e1](https://github.com/meduseld404/meduseld-backend/commit/6d423e1176eca5a54c60fb93a5514f99a5049e5d))
+* **api:** Add play-again flow that keeps trivia lobby intact ([e569578](https://github.com/meduseld404/meduseld-backend/commit/e569578268b60afab45590d2cba9e406591417ba))
+* **api:** Add Remote Desktop WebRTC signaling backend ([b443618](https://github.com/meduseld404/meduseld-backend/commit/b443618ffce9c313b7ecaaae0d53ed7c19f166c0))
+* **api:** Add sudden death tiebreaker for trivia multiplayer ([a4f252c](https://github.com/meduseld404/meduseld-backend/commit/a4f252c6e86a976c4d69c8b6e6f293da974d850a))
+* **api:** Add WebSocket broadcast for picker spin and pool changes ([dd587d2](https://github.com/meduseld404/meduseld-backend/commit/dd587d2593191960716fdf87a4351f2a74bf49d6))
+* **api:** Include category_name in game_starting event ([a374561](https://github.com/meduseld404/meduseld-backend/commit/a374561421465a3b7dcd78a777b38e1576d72dfa))
+* **fame:** Add game tag support with preset and custom tags ([ccc2a50](https://github.com/meduseld404/meduseld-backend/commit/ccc2a502937676c39ccd1941334c15540bf50418))
+* **fame:** Add Hall of Fame backend API and models ([5c60022](https://github.com/meduseld404/meduseld-backend/commit/5c60022d57805a85672a954362bd32ad9c5200af))
+* **health:** Add categorized wiki index with search ([94cfce1](https://github.com/meduseld404/meduseld-backend/commit/94cfce124183a399639a51b8c4b0b7827e2665a2))
+* **health:** Add fellowsync-rooms proxy route for active room banner ([491cdd6](https://github.com/meduseld404/meduseld-backend/commit/491cdd63ce5a43bc4296cec0e958a95b43b1e8a6))
+* **health:** Add Game Wiki microservice and scrape infrastructure ([4606f9c](https://github.com/meduseld404/meduseld-backend/commit/4606f9c833561c991a8342df78401cbbbc9a2725))
+* **health:** Add standalone category fetcher for existing wiki pages ([9d5d11c](https://github.com/meduseld404/meduseld-backend/commit/9d5d11c56711048bc811d82a82a16f4bb8110f5c))
+* **health:** Replace wiki redirect with searchable index page ([7716ce3](https://github.com/meduseld404/meduseld-backend/commit/7716ce3d4c892d44c436f3930de8afeeaa8d12df))
+* **proxy:** Add Jellyseerr SSO auto-login via Jellyfin credentials ([e70d4cc](https://github.com/meduseld404/meduseld-backend/commit/e70d4cca077f954aa162f068a904e44ecd4111cc))
+
+
+### Bug Fixes
+
+* **api:** Add dnd_links.image_url to _ensure_columns ([446e2eb](https://github.com/meduseld404/meduseld-backend/commit/446e2eb27a1e6db1a8ebb06a0cc37f272bd87d0e))
+* **api:** Add namespace to all socketio.emit calls in trivia WebSocket ([efe2511](https://github.com/meduseld404/meduseld-backend/commit/efe251105185169c91648d5131d7b728e950e2cd))
+* **api:** Allow any authenticated user to add picker games ([85a5ad8](https://github.com/meduseld404/meduseld-backend/commit/85a5ad81250891bd204cc07b4141fc4588547b18))
+* **api:** Decode HTML entities from Open Trivia DB responses ([07cd674](https://github.com/meduseld404/meduseld-backend/commit/07cd674d281b0a495bf9e7a943d9687f835f0cf7)), closes [#039](https://github.com/meduseld404/meduseld-backend/issues/039)
+* **api:** Fix Hall of Fame create failing due to missing tag column ([dd0d109](https://github.com/meduseld404/meduseld-backend/commit/dd0d109458b8b6bb7c822a841a478eb7e1296e0d))
+* **api:** Fix stale data on repeated calendar event edits ([62724ba](https://github.com/meduseld404/meduseld-backend/commit/62724ba760a60e3b8e48c660f89dcc7393d34c3c))
+* **api:** Fix trivia leaderboard caching and end-game lock scope ([e487789](https://github.com/meduseld404/meduseld-backend/commit/e48778968fd83bc4311c38034a7e6c08521572ea))
+* **api:** Include host_name in trivia lobby data to fix Unknown display ([f9ad20f](https://github.com/meduseld404/meduseld-backend/commit/f9ad20f78a35c16bb00ea25dc42ee072c14d2a95))
+* **api:** Only count actual game winners on leaderboard ([18516ee](https://github.com/meduseld404/meduseld-backend/commit/18516eed4cd57e895c741427b7c8895bd428d06d))
+* **api:** Prevent browser caching of picker game pool responses ([bff59e9](https://github.com/meduseld404/meduseld-backend/commit/bff59e95f9970aa25297a298d05298a0887990df))
+* **api:** Proxy Jellyseerr auth server-side to avoid CORS ([6554f0e](https://github.com/meduseld404/meduseld-backend/commit/6554f0ee0e77ea1efbae8a7e960efcf031d8419f))
+* **api:** Remove all remaining exception details from error responses ([354e2d7](https://github.com/meduseld404/meduseld-backend/commit/354e2d74ad293c421cb7a24369b63233dcd1f679))
+* **api:** Replace str(e) in error responses with generic messages (CodeQL) ([335248e](https://github.com/meduseld404/meduseld-backend/commit/335248eb0f1eb5c03b1eb39c30911d65ddcff190))
+* **api:** Stop exposing stderr in update output API response (CodeQL) ([cf5d842](https://github.com/meduseld404/meduseld-backend/commit/cf5d84231cf1fbc292b7c59cdd873c15bfc51081))
+* **api:** Use URL-parsed origin validation for CORS checks (CodeQL) ([431b620](https://github.com/meduseld404/meduseld-backend/commit/431b620199d554af2e03a4b4eefdbc3a5b28b7a8))
+* **auth:** Auto-create user records in WebSocket auth ([51c4f10](https://github.com/meduseld404/meduseld-backend/commit/51c4f106c9c12d29fc0bd5d35fb4a840def1466d))
+* **config:** Add __all__ to config.py to fix import * pollution warning ([beb37b6](https://github.com/meduseld404/meduseld-backend/commit/beb37b638270e3a8190507f55f1d7ee722927c79))
+* **config:** Add db.create_all() to auto-create new tables on startup ([4bf9182](https://github.com/meduseld404/meduseld-backend/commit/4bf9182811f3399530b9d45e67e9b4c3cc772959))
+* **config:** Replace module-level print statements with logging (CodeQL) ([07bc709](https://github.com/meduseld404/meduseld-backend/commit/07bc709a3c7e3bf4e29ea361845a0440702cb03b))
+* **fame:** Use secure_filename for fame media path validation (CodeQL) ([1570d03](https://github.com/meduseld404/meduseld-backend/commit/1570d03d6a9ffeda8a2005159cfc6ef177db903c))
+* **fame:** Validate file paths to prevent path traversal (CodeQL) ([17f9c21](https://github.com/meduseld404/meduseld-backend/commit/17f9c21ecc9171efaa82f07252874b7401ba3f52))
+* **health:** Add debug logging for Main Page scrape failures ([bb7a93c](https://github.com/meduseld404/meduseld-backend/commit/bb7a93c05a423e497b3c62974ded1350e43919a8))
+* **health:** Ensure Main Page is scraped and index.html points to valid file ([26d3337](https://github.com/meduseld404/meduseld-backend/commit/26d33376df75f4f6a22eaaa695b6982a3800d387))
+* **health:** Fix relative URLs in srcset breaking images on retina displays ([1b5ea7d](https://github.com/meduseld404/meduseld-backend/commit/1b5ea7d8b868953ef09990de88877861ee90e6b3))
+* **health:** Fix wiki page formatting and broken images ([e324421](https://github.com/meduseld404/meduseld-backend/commit/e324421016a02ccb300bd29929cac2ecfb7aaa04))
+* **health:** Fix wiki scrape rate-limiting (429 errors) ([66fbda1](https://github.com/meduseld404/meduseld-backend/commit/66fbda1dad02027ce3a0b8ee5bc971f3e975a364))
+* **health:** Fix wiki scrape script failures ([561db80](https://github.com/meduseld404/meduseld-backend/commit/561db804f05fbd6ee0276eec7cab6523e5bee401))
+* **health:** Fix wiki server path resolution for /wiki/ prefix ([4c07e95](https://github.com/meduseld404/meduseld-backend/commit/4c07e955341192624e956cce8a3d40f237dcaa83))
+* **health:** Follow wiki redirects when scraping pages ([3e67e57](https://github.com/meduseld404/meduseld-backend/commit/3e67e57d3301047901745117dc710f69c7cd49c2))
+* **health:** Prevent image download crashes from losing scraped pages ([d715f18](https://github.com/meduseld404/meduseld-backend/commit/d715f184df6a188d31795e33c3eba66250a08436))
+* **health:** Prevent wiki logo overflow on mobile ([dc25cc3](https://github.com/meduseld404/meduseld-backend/commit/dc25cc331be481d901f411c9e16a73005fedc064))
+* **health:** Replace wget with curl-based wiki scraper ([8c6d02a](https://github.com/meduseld404/meduseld-backend/commit/8c6d02aa45ceb189f44e5af0726161c722eb9176))
+* **health:** Rewrite wiki scraper to use MediaWiki API ([b7772b0](https://github.com/meduseld404/meduseld-backend/commit/b7772b09e0012abd0d86238096f881dd22cf2eee))
+* **health:** Strip HTML tags from wiki page title element ([f1da12c](https://github.com/meduseld404/meduseld-backend/commit/f1da12c85583878d7cd56c260d36585232f8b26b))
+* **panel:** Fix sudden death skipping first question ([942b356](https://github.com/meduseld404/meduseld-backend/commit/942b356e3a1ef9c62db3d2dac7b5fefb9c46b3c3))
+* **panel:** Push Flask app context for trivia result persistence ([53052a3](https://github.com/meduseld404/meduseld-backend/commit/53052a33ddc1794ed6c4c277b354e4b39c3873cf))
+* **proxy:** Add error checking for Jellyfin provisioning in seerr-auth ([eb4212b](https://github.com/meduseld404/meduseld-backend/commit/eb4212b4b14f66285796e9e48812614f81cbe327))
+* **proxy:** Add Jellyfin credential verification before Jellyseerr auth ([a939ec6](https://github.com/meduseld404/meduseld-backend/commit/a939ec6e71fc022981a945301f76d35f3fea2f84))
+* **proxy:** Escape inline script values in Jellyfin SSO page (CodeQL) ([76f7bce](https://github.com/meduseld404/meduseld-backend/commit/76f7bce9318f05921e225a411329d746e4b48a79))
+* **proxy:** Return consistent 3-tuple from terminal_proxy (CodeQL) ([989eaa2](https://github.com/meduseld404/meduseld-backend/commit/989eaa20186f6e001ec8009e2dbe99e8d9e617a8))
+* **proxy:** Use client-side fetch for Jellyseerr auth to fix cookie domain ([2b67093](https://github.com/meduseld404/meduseld-backend/commit/2b670932943949684fc296ff8944aef3a6dc316a))
+* **proxy:** Validate Jellyfin SSO params are alphanumeric (CodeQL XSS) ([29dd845](https://github.com/meduseld404/meduseld-backend/commit/29dd845d985c849f9d6e4671c0c68fdc1ceae220)), closes [#19](https://github.com/meduseld404/meduseld-backend/issues/19)
+* **server:** Add comments and logging to empty except blocks (CodeQL) ([7a9b9be](https://github.com/meduseld404/meduseld-backend/commit/7a9b9beaab237e3a6763cc06e64a35881d944592))
+* **server:** Add explicit returns to fix mixed implicit/explicit return warnings ([87681f6](https://github.com/meduseld404/meduseld-backend/commit/87681f6bbeadbfb9d158c31d8ef00e810ee6755b))
+* **server:** Filter out MediaWiki maintenance categories and fix underscore display ([ffe1fd9](https://github.com/meduseld404/meduseld-backend/commit/ffe1fd99808b490c8063bcc707b928f9c7db571f))
+* **server:** Fix duplicate char in regex character class (CodeQL) ([1d67034](https://github.com/meduseld404/meduseld-backend/commit/1d67034140396a1ef77f3c9ae56d9ddf2120879e))
+* **server:** Replace bare except with except Exception in dev mode check ([624ece7](https://github.com/meduseld404/meduseld-backend/commit/624ece7bd721cb4f16d2dc020010407ca0d7a24c))
+
+
+### Refactoring
+
+* **config:** Remove unused imports (CodeQL) ([5764a92](https://github.com/meduseld404/meduseld-backend/commit/5764a92195911b1a2cc3ae9e83c4c5d92cd84f24))
+* **server:** Remove unused flag_url from countries cache ([15ae336](https://github.com/meduseld404/meduseld-backend/commit/15ae336068ef13f6cf7b9cf325b1b9a4987c302f))
+* **server:** Remove unused local variables (CodeQL) ([6a2d29d](https://github.com/meduseld404/meduseld-backend/commit/6a2d29d97f0bd1460301faa98a09a9252e60c0aa))
+
+
+### Styling
+
+* **health:** Double wiki header logo size ([4445e18](https://github.com/meduseld404/meduseld-backend/commit/4445e1831b1c48913aac1b9075b9baf10195fd16))
+* **health:** Force center wiki page content container ([bb29f55](https://github.com/meduseld404/meduseld-backend/commit/bb29f55e25ee0f5b5bc238f3f8e460e54bf122c6))
+* **health:** Make wiki category sections more distinct ([c68ea67](https://github.com/meduseld404/meduseld-backend/commit/c68ea67ce6bfdea197a299515f73a504fd33b4f9))
+* **health:** Remove Main Page button from wiki index ([187cbb4](https://github.com/meduseld404/meduseld-backend/commit/187cbb4086c335d19da512bb9b0b2806b9448b7b))
+* **health:** Replace wiki index h1 with Icarus logo header ([6cfb921](https://github.com/meduseld404/meduseld-backend/commit/6cfb9215f344cd29b9e6648893007f3e3b3948a4))
+* **health:** Use 3-column layout for wiki category sections ([5074749](https://github.com/meduseld404/meduseld-backend/commit/5074749466fb63c2796843a99cff69a432a63f32))
+
 ## [0.8.0-alpha](https://github.com/meduseld404/meduseld-backend/compare/v0.7.0-alpha...v0.8.0-alpha) (2026-03-25)
 
 
