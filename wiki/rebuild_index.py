@@ -22,7 +22,7 @@ page_files = sorted(
     key=lambda x: x.lower(),
 )
 
-# Skip internal/meta categories
+# Skip internal/meta categories and MediaWiki maintenance categories
 SKIP_CATS = {
     "Animated Images",
     "Blog posts",
@@ -35,6 +35,30 @@ SKIP_CATS = {
     "CS1 location test",
 }
 
+# Prefixes that indicate MediaWiki maintenance/internal categories
+SKIP_PREFIXES = (
+    "Pages with",
+    "Pages using",
+    "Pages that",
+    "Pages_with",
+    "Pages_using",
+    "Pages_that",
+    "Articles with",
+    "Articles using",
+    "Articles that",
+    "Articles_with",
+    "Articles_using",
+    "Articles_that",
+    "All articles",
+    "All pages",
+    "All_articles",
+    "All_pages",
+    "CS1 ",
+    "CS1_",
+    "Webarchive ",
+    "Webarchive_",
+)
+
 # Build category -> pages mapping using first non-skipped category per page
 cat_to_pages = defaultdict(list)
 uncategorized = []
@@ -43,7 +67,13 @@ for name in page_files:
     title = name.replace("_", " ")
     cats = page_categories.get(title, [])
     # Filter out asset/meta categories
-    cats = [c for c in cats if c not in SKIP_CATS and not c.startswith("Assets")]
+    cats = [
+        c
+        for c in cats
+        if c not in SKIP_CATS
+        and not c.startswith("Assets")
+        and not any(c.startswith(p) for p in SKIP_PREFIXES)
+    ]
     if cats:
         # Use the first category as the primary grouping
         cat_to_pages[cats[0]].append(name)
@@ -61,9 +91,10 @@ for cat in sorted_cats:
         f'<li class="wiki-link" data-name="{n.lower()}"><a href="{n}.html">{n.replace("_", " ")}</a></li>'
         for n in pages
     )
+    display_cat = cat.replace("_", " ")
     sections_html += f"""
 <div class="category-section" data-cat="{cat.lower()}">
-  <h2 class="cat-header" onclick="this.parentElement.classList.toggle('collapsed')">{cat} <span class="cat-count">{len(pages)}</span></h2>
+  <h2 class="cat-header" onclick="this.parentElement.classList.toggle('collapsed')">{display_cat} <span class="cat-count">{len(pages)}</span></h2>
   <ul class="wiki-list">{links}</ul>
 </div>"""
 

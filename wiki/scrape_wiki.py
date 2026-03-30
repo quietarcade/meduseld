@@ -121,6 +121,9 @@ def fetch_page_html(title):
     html = parse.get("text", {}).get("*", "")
     display_title = parse.get("displaytitle", title)
     categories = [c["*"] for c in parse.get("categories", []) if not c.get("hidden")]
+    # Filter out MediaWiki maintenance categories (API may return spaces or underscores)
+    _maint = ("Pages with", "Pages using", "Pages that", "Pages_with", "Pages_using", "Pages_that")
+    categories = [c for c in categories if not any(c.startswith(p) for p in _maint)]
     return html, display_title, categories
 
 
