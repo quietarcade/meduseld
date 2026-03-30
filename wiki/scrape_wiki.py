@@ -199,7 +199,7 @@ body {{ background: #1a1a2e; color: #e0e0e0; font-family: -apple-system, BlinkMa
 .mirror-nav a {{ color: #e6c65c; text-decoration: none; font-size: 0.85rem; }}
 .mirror-nav a:hover {{ text-decoration: underline; }}
 .mirror-nav .back {{ margin-left: auto; }}
-.mw-body-content {{ max-width: 960px; margin: 20px auto; padding: 0 20px; }}
+.mw-body-content {{ max-width: 960px; margin: 20px auto !important; padding: 0 20px; float: none !important; }}
 .mw-body-content a {{ color: #e6c65c; }}
 .mw-body-content a:visited {{ color: #c4a84a; }}
 .mw-body-content img {{ max-width: 100%; height: auto; }}
